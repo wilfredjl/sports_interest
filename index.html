@@ -336,10 +336,41 @@ function processFile(file) {
 
   if (ext === 'csv') {
     Papa.parse(file, {
-      header: true,
+      header: false,
       skipEmptyLines: true,
+    
       complete: function(results) {
-        processRows(results.data);
+    
+        const rows = results.data;
+    
+        // Find actual header row
+        const headerIndex = rows.findIndex(row =>
+          row.some(cell =>
+            String(cell).toLowerCase().includes('response id')
+          )
+        );
+    
+        if (headerIndex === -1) {
+          alert('Could not locate form headers.');
+          return;
+        }
+    
+        const headers = rows[headerIndex];
+    
+        const formattedRows = rows
+          .slice(headerIndex + 1)
+          .map(row => {
+    
+            const obj = {};
+    
+            headers.forEach((header, i) => {
+              obj[header] = row[i];
+            });
+    
+            return obj;
+          });
+    
+        processRows(formattedRows);
       }
     });
   }
