@@ -549,11 +549,18 @@ function renderCharts() {
     data: {
       labels: Object.keys(genderCounts),
       datasets: [{
-        data: Object.values(genderCounts)
+        data: Object.values(genderCounts),
+  
+        backgroundColor: [
+          '#FF6384', // Female
+          '#36A2EB'  // Male
+        ],
+  
+        borderColor: '#111827',
+        borderWidth: 2
       }]
     }
   });
-
 
   const unitCounts = {};
 
