@@ -200,6 +200,30 @@ button {
 </head>
 <body>
 
+<div class="card" style="margin-bottom:20px;">
+  <h2>Paste Excel Data</h2>
+
+  <textarea
+    id="pasteArea"
+    placeholder="Copy from Excel and paste here..."
+    style="
+      width:100%;
+      height:200px;
+      padding:12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      resize:vertical;
+      font-family:monospace;
+    "
+  ></textarea>
+
+  <br><br>
+
+  <button onclick="processPastedData()">
+    Generate Dashboard
+  </button>
+</div>
+  
 <div class="container">
 
   <div class="header">
@@ -418,6 +442,49 @@ function processFile(file) {
   else {
     alert('Unsupported file format');
   }
+}
+
+function processPastedData() {
+
+  const raw = document.getElementById('pasteArea').value;
+
+  if (!raw.trim()) {
+    alert('Paste some data first.');
+    return;
+  }
+
+  const rows = raw
+    .trim()
+    .split('\n')
+    .map(row => row.split('\t'));
+
+  const headerIndex = rows.findIndex(row =>
+    row.some(cell =>
+      String(cell).toLowerCase().includes('response id')
+    )
+  );
+
+  if (headerIndex === -1) {
+    alert('Could not locate form headers.');
+    return;
+  }
+
+  const headers = rows[headerIndex];
+
+  const formattedRows = rows
+    .slice(headerIndex + 1)
+    .map(row => {
+
+      const obj = {};
+
+      headers.forEach((header, i) => {
+        obj[header] = row[i];
+      });
+
+      return obj;
+    });
+
+  processRows(formattedRows);
 }
 
 
