@@ -381,10 +381,38 @@ function processFile(file) {
       const data = new Uint8Array(e.target.result);
       const workbook = XLSX.read(data, { type: 'array' });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet);
-      processRows(rows);
+      const rawRows = XLSX.utils.sheet_to_json(sheet, {
+        header: 1
+      });
+      
+      const headerIndex = rawRows.findIndex(row =>
+        row.some(cell =>
+          String(cell).toLowerCase().includes('response id')
+        )
+      );
+      
+      if (headerIndex === -1) {
+        alert('Could not locate form headers.');
+        return;
+      }
+      
+      const headers = rawRows[headerIndex];
+      
+      const formattedRows = rawRows
+        .slice(headerIndex + 1)
+        .map(row => {
+      
+          const obj = {};
+      
+          headers.forEach((header, i) => {
+            obj[header] = row[i];
+          });
+      
+          return obj;
+        });
+      
+      processRows(formattedRows);
     };
-
     reader.readAsArrayBuffer(file);
   }
   else {
