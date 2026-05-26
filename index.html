@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sports Interest Dashboard</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/tabler-icons.min.css">
+<style>
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f4f1;
+    --bg-tertiary: #eeedea;
+    --text-primary: #1a1a1a;
+    --text-secondary: #6b6a66;
+    --border-light: rgba(0,0,0,0.1);
+    --border-med: rgba(0,0,0,0.18);
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --blue: #378ADD;
+    --teal: #5DCAA5;
+    --purple: #7F77DD;
+    --pink: #D4537E;
+    --gray: #888780;
+    --green: #3B6D11;
+    --bg-nsf: #E6F1FB;
+    --text-nsf: #185FA5;
+    --bg-reg: #EAF3DE;
+    --text-reg: #3B6D11;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-primary: #1c1c1a;
+      --bg-secondary: #252523;
+      --bg-tertiary: #2e2e2b;
+      --text-primary: #f0efe9;
+      --text-secondary: #9a9990;
+      --border-light: rgba(255,255,255,0.1);
+      --border-med: rgba(255,255,255,0.18);
+      --bg-nsf: #0C447C;
+      --text-nsf: #B5D4F4;
+      --bg-reg: #27500A;
+      --text-reg: #C0DD97;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+  .container { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 500; }
+  .site-header { margin-bottom: 2rem; }
+  .site-header p { font-size: 14px; color: var(--text-secondary); margin-top: 4px; }
+
+  .drop-zone {
+    border: 1.5px dashed var(--border-med);
+    border-radius: var(--radius-lg);
+    padding: 4rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: background 0.2s;
+    background: var(--bg-primary);
+    margin-bottom: 1.5rem;
+  }
+  .drop-zone:hover, .drop-zone.over { background: var(--bg-secondary); }
+  .drop-zone .icon { font-size: 36px; color: var(--text-secondary); margin-bottom: 12px; display: block; }
+  .drop-zone h3 { font-size: 16px; font-weight: 500; margin-bottom: 6px; }
+  .drop-zone p { font-size: 13px; color: var(--text-secondary); }
+  .hidden { display: none !important; }
+
+  .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1.25rem; }
+  @media (max-width: 600px) { .metric-grid { grid-template-columns: repeat(2, 1fr); } }
+  .metric { background: var(--bg-secondary); border-radius: var(--radius-md); padding: 14px 16px; }
+  .metric .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+  .metric .value { font-size: 24px; font-weight: 500; }
+
+  .card {
+    background: var(--bg-primary);
+    border: 0.5px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.25rem;
+    margin-bottom: 12px;
+  }
+  .section-title {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 14px;
+  }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 0; }
+  @media (max-width: 600px) { .two-col { grid-template-columns: 1fr; } }
+
+  .chart-wrap { position: relative; width: 100%; }
+
+  .sport-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  @media (max-width: 500px) { .sport-grid { grid-template-columns: 1fr; } }
+  .sport-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .sport-name { min-width: 0; flex: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sport-bar-bg { flex: 2; height: 6px; background: var(--bg-secondary); border-radius: 3px; overflow: hidden; }
+  .sport-bar { height: 100%; border-radius: 3px; background: var(--blue); transition: width 0.4s; }
+  .sport-count { font-size: 12px; color: var(--text-secondary); min-width: 20px; text-align: right; }
+
+  .filter-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .filter-row label { font-size: 12px; color: var(--text-secondary); }
+  select {
+    font-size: 12px;
+    padding: 5px 10px;
+    border: 0.5px solid var(--border-light);
+    border-radius: var(--radius-md);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+
+  .roster-table { width: 100%; font-size: 13px; border-collapse: collapse; }
+  .roster-table th {
+    text-align: left;
+    font-weight: 500;
+    font-size: 11px;
+    color: var(--text-secondary);
+    padding: 6px 8px;
+    border-bottom: 0.5px solid var(--border-light);
+  }
+  .roster-table td { padding: 7px 8px; border-bottom: 0.5px solid var(--border-light); }
+  .roster-wrap { max-height: 320px; overflow-y: auto; }
+
+  .badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
+  .badge-nsf { background: var(--bg-nsf); color: var(--text-nsf); }
+  .badge-reg { background: var(--bg-reg); color: var(--text-reg); }
+
+  .medical-list { list-style: none; }
+  .medical-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 0.5px solid var(--border-light);
+    font-size: 13px;
+  }
+  .medical-list li .cond { font-size: 11px; color: var(--text-secondary); text-align: right; max-width: 55%; }
+
+  .action-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .btn-group { display: flex; gap: 8px; }
+  .btn {
+    font-size: 12px;
+    padding: 6px 14px;
+    border: 0.5px solid var(--border-med);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    transition: background 0.15s;
+  }
+  .btn:hover { background: var(--bg-secondary); }
+
+  .dash-title { font-size: 18px; font-weight: 500; }
+  .dash-sub { font-size: 12px; color: var(--text-secondary); margin-top: 3px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="site-header">
+    <h1>Sports Interest Dashboard</h1>
+    <p>Upload your form export CSV to analyse sports sign-ups, demographics, and generate rosters.</p>
+  </div>
+
+  <div id="dropZone" class="drop-zone">
+    <i class="ti ti-upload icon" aria-hidden="true"></i>
+    <h3>Drop your CSV here</h3>
+    <p>or click to select — supports the standard form export format</p>
+    <input type="file" id="fileInput" accept=".csv" style="display:none">
+  </div>
+
+  <div id="dashboard" class="hidden">
+
+    <div class="action-row">
+      <div>
+        <div class="dash-title" id="dash-title"></div>
+        <div class="dash-sub" id="dash-sub"></div>
+      </div>
+      <div class="btn-group">
+        <button class="btn" onclick="downloadReport()"><i class="ti ti-download" aria-hidden="true"></i> Export summary</button>
+        <button class="btn" onclick="reset()"><i class="ti ti-refresh" aria-hidden="true"></i> New file</button>
+      </div>
+    </div>
+
+    <div class="metric-grid">
+      <div class="metric"><div class="label">Total respondents</div><div class="value" id="m-total"></div></div>
+      <div class="metric"><div class="label">Sports available</div><div class="value" id="m-sports"></div></div>
+      <div class="metric"><div class="label">NSF</div><div class="value" id="m-nsf"></div></div>
+      <div class="metric"><div class="label">Regular</div><div class="value" id="m-reg"></div></div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="section-title">Gender split</div>
+        <div class="chart-wrap" style="height:200px;"><canvas id="genderChart" role="img" aria-label="Doughnut chart showing gender distribution">Gender distribution of respondents.</canvas></div>
+      </div>
+      <div class="card">
+        <div class="section-title">Respondents by unit</div>
+        <div class="chart-wrap" style="height:200px;"><canvas id="unitChart" role="img" aria-label="Bar chart of respondents per unit">Number of respondents per unit.</canvas></div>
+      </div>
+    </div>
+
+    <div style="height:12px;"></div>
+
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+        <div class="section-title" style="margin:0;">Sports interest ranking</div>
+        <div class="filter-row" style="margin:0;">
+          <label>Filter unit:</label>
+          <select id="unitFilter" onchange="renderSports()">
+            <option value="all">All units</option>
+          </select>
+        </div>
+      </div>
+      <div class="sport-grid" id="sportGrid"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Sport → participant roster</div>
+      <div class="filter-row">
+        <label>Select sport:</label>
+        <select id="sportSelect" onchange="renderRoster()"></select>
+        <button class="btn" onclick="downloadSportRoster()"><i class="ti ti-download" aria-hidden="true"></i> Export roster</button>
+      </div>
+      <div class="roster-wrap">
+        <table class="roster-table">
+          <thead><tr><th>Rank</th><th>Name</th><th>Unit</th><th>Type</th></tr></thead>
+          <tbody id="rosterBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="section-title">Medical conditions flagged</div>
+        <div id="medicalContent"></div>
+      </div>
+      <div class="card">
+        <div class="section-title">Sports selected per person</div>
+        <div class="chart-wrap" style="height:200px;"><canvas id="interestDistChart" role="img" aria-label="Bar chart showing how many sports each person selected">Distribution of how many sports each respondent selected.</canvas></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+let allData = [];
+let charts = {};
+
+const dz = document.getElementById('dropZone');
+const fi = document.getElementById('fileInput');
+
+dz.addEventListener('click', () => fi.click());
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('over');
+  handleFile(e.dataTransfer.files[0]);
+});
+fi.addEventListener('change', e => handleFile(e.target.files[0]));
+
+function handleFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => parseCSV(e.target.result);
+  reader.readAsText(file);
+}
+
+function parseCSV(text) {
+  const lines = text.replace(/\r/g, '').split('\n');
+  let headerIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i].replace(/^\uFEFF/, '').toLowerCase();
+    if (l.startsWith('response id') || l.startsWith('timestamp') || l.includes('response id')) {
+      headerIdx = i; break;
+    }
+  }
+  if (headerIdx < 0) {
+    alert('Could not find header row. Please ensure this is an unmodified form export CSV.');
+    return;
+  }
+
+  const headers = splitCSV(lines[headerIdx]);
+  const normalize = s => s.replace(/^\uFEFF/, '').trim().toLowerCase();
+  const colIdx = {};
+  headers.forEach((h, i) => { colIdx[normalize(h)] = i; });
+
+  const find = (...keys) => {
+    for (const k of keys) { if (colIdx[k] !== undefined) return colIdx[k]; }
+    for (const k of Object.keys(colIdx)) { for (const key of keys) { if (k.includes(key)) return colIdx[k]; } }
+    return -1;
+  };
+
+  const rankI = find('rank');
+  const nameI = find('full name');
+  const unitI = find('unit');
+  const genderI = find('gender');
+  const typeI = find('nsf / regular');
+  const sportsI = find('kindly indicate which sport');
+  const medI = find('any existing medical');
+
+  allData = [];
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    const row = splitCSV(lines[i]);
+    if (row.length < 4) continue;
+    const sports = sportsI >= 0 && row[sportsI]
+      ? row[sportsI].split(';').map(s => s.trim()).filter(Boolean)
+      : [];
+    allData.push({
+      rank: rankI >= 0 ? row[rankI] : '',
+      name: nameI >= 0 ? row[nameI] : '',
+      unit: unitI >= 0 ? row[unitI] : '',
+      gender: genderI >= 0 ? row[genderI] : '',
+      type: typeI >= 0 ? row[typeI] : '',
+      sports,
+      medical: medI >= 0 ? row[medI] : ''
+    });
+  }
+
+  if (allData.length === 0) { alert('No data rows found.'); return; }
+  document.getElementById('dropZone').classList.add('hidden');
+  document.getElementById('dashboard').classList.remove('hidden');
+  buildDashboard(file.name);
+}
+
+function splitCSV(line) {
+  const result = []; let cur = ''; let inQ = false;
+  for (const c of line) {
+    if (c === '"') { inQ = !inQ; }
+    else if (c === ',' && !inQ) { result.push(cur.trim()); cur = ''; }
+    else { cur += c; }
+  }
+  result.push(cur.trim());
+  return result;
+}
+
+function buildDashboard(filename) {
+  const nsf = allData.filter(d => d.type.trim().toLowerCase() === 'nsf').length;
+  const reg = allData.length - nsf;
+  document.getElementById('dash-title').textContent = 'Sports Interest Report';
+  document.getElementById('dash-sub').textContent = filename + ' · ' + allData.length + ' responses';
+  document.getElementById('m-total').textContent = allData.length;
+  document.getElementById('m-nsf').textContent = nsf;
+  document.getElementById('m-reg').textContent = reg;
+  const allSports = new Set(allData.flatMap(d => d.sports));
+  document.getElementById('m-sports').textContent = allSports.size;
+
+  const units = [...new Set(allData.map(d => d.unit).filter(Boolean))].sort();
+  const uSel = document.getElementById('unitFilter');
+  uSel.innerHTML = '<option value="all">All units</option>';
+  units.forEach(u => { const o = document.createElement('option'); o.value = u; o.textContent = u; uSel.appendChild(o); });
+
+  const sportSel = document.getElementById('sportSelect');
+  const sorted = [...allSports].sort((a, b) =>
+    allData.filter(d => d.sports.includes(b)).length - allData.filter(d => d.sports.includes(a)).length
+  );
+  sportSel.innerHTML = '';
+  sorted.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; sportSel.appendChild(o); });
+
+  renderCharts(nsf, reg);
+  renderSports();
+  renderRoster();
+  renderMedical();
+}
+
+function getColors() {
+  const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  return {
+    gridColor: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+    tickColor: dark ? '#9a9990' : '#6b6a66',
+    legendColor: dark ? '#f0efe9' : '#1a1a1a'
+  };
+}
+
+function renderCharts(nsf, reg) {
+  if (charts.gender) charts.gender.destroy();
+  if (charts.unit) charts.unit.destroy();
+  if (charts.dist) charts.dist.destroy();
+
+  const { gridColor, tickColor } = getColors();
+
+  const genderCounts = {};
+  allData.forEach(d => { const g = d.gender || 'Unknown'; genderCounts[g] = (genderCounts[g] || 0) + 1; });
+  const gKeys = Object.keys(genderCounts);
+  charts.gender = new Chart(document.getElementById('genderChart'), {
+    type: 'doughnut',
+    data: {
+      labels: gKeys,
+      datasets: [{
+        data: gKeys.map(k => genderCounts[k]),
+        backgroundColor: ['#378ADD', '#D4537E', '#888780', '#5DCAA5'],
+        borderWidth: 2,
+        borderColor: 'transparent'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { font: { size: 11 }, boxWidth: 10, padding: 10, color: tickColor }
+        }
+      }
+    }
+  });
+
+  const unitCounts = {};
+  allData.forEach(d => { const u = d.unit || 'Unknown'; unitCounts[u] = (unitCounts[u] || 0) + 1; });
+  const uKeys = Object.keys(unitCounts).sort((a, b) => unitCounts[b] - unitCounts[a]);
+  charts.unit = new Chart(document.getElementById('unitChart'), {
+    type: 'bar',
+    data: {
+      labels: uKeys,
+      datasets: [{ data: uKeys.map(k => unitCounts[k]), backgroundColor: '#5DCAA5', borderWidth: 0, borderRadius: 4 }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { font: { size: 10 }, color: tickColor }, grid: { color: gridColor } },
+        y: { ticks: { stepSize: 1, color: tickColor }, grid: { color: gridColor } }
+      }
+    }
+  });
+
+  const countDist = {};
+  allData.forEach(d => { const n = d.sports.length; countDist[n] = (countDist[n] || 0) + 1; });
+  const dKeys = Object.keys(countDist).map(Number).sort((a, b) => a - b);
+  charts.dist = new Chart(document.getElementById('interestDistChart'), {
+    type: 'bar',
+    data: {
+      labels: dKeys.map(k => k + (k === 1 ? ' sport' : ' sports')),
+      datasets: [{ data: dKeys.map(k => countDist[k]), backgroundColor: '#7F77DD', borderWidth: 0, borderRadius: 4 }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { font: { size: 11 }, color: tickColor }, grid: { color: gridColor } },
+        y: { ticks: { stepSize: 1, color: tickColor }, grid: { color: gridColor } }
+      }
+    }
+  });
+}
+
+function renderSports() {
+  const unit = document.getElementById('unitFilter').value;
+  const filtered = unit === 'all' ? allData : allData.filter(d => d.unit === unit);
+  const sportCounts = {};
+  filtered.forEach(d => d.sports.forEach(s => { sportCounts[s] = (sportCounts[s] || 0) + 1; }));
+  const sorted = Object.entries(sportCounts).sort((a, b) => b[1] - a[1]);
+  const max = sorted[0]?.[1] || 1;
+  document.getElementById('sportGrid').innerHTML = sorted.map(([s, c]) => `
+    <div class="sport-row">
+      <span class="sport-name" title="${s}">${s}</span>
+      <div class="sport-bar-bg"><div class="sport-bar" style="width:${Math.round(c / max * 100)}%"></div></div>
+      <span class="sport-count">${c}</span>
+    </div>`).join('');
+}
+
+function renderRoster() {
+  const sport = document.getElementById('sportSelect').value;
+  const participants = allData.filter(d => d.sports.includes(sport));
+  document.getElementById('rosterBody').innerHTML = participants.map(p => `
+    <tr>
+      <td>${escHtml(p.rank)}</td>
+      <td>${escHtml(p.name)}</td>
+      <td>${escHtml(p.unit)}</td>
+      <td><span class="badge ${p.type.trim().toLowerCase() === 'nsf' ? 'badge-nsf' : 'badge-reg'}">${escHtml(p.type)}</span></td>
+    </tr>`).join('');
+}
+
+function renderMedical() {
+  const nil = new Set(['nil','none','no.','no','ni','-','n/a','nill','na','']);
+  const flagged = allData.filter(d => !nil.has(d.medical.trim().toLowerCase()));
+  const el = document.getElementById('medicalContent');
+  if (flagged.length === 0) {
+    el.innerHTML = '<p style="font-size:13px;color:var(--text-secondary);">No conditions flagged.</p>';
+  } else {
+    el.innerHTML = '<ul class="medical-list">' + flagged.map(p =>
+      `<li><span>${escHtml(p.rank)} ${escHtml(p.name)}</span><span class="cond">${escHtml(p.medical)}</span></li>`
+    ).join('') + '</ul>';
+  }
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function downloadReport() {
+  const allSports = [...new Set(allData.flatMap(d => d.sports))].sort();
+  const rows = [['Sport', 'Count', 'Participants']];
+  allSports.forEach(s => {
+    const people = allData.filter(d => d.sports.includes(s)).map(d => `${d.rank} ${d.name} (${d.unit})`);
+    rows.push([s, people.length, people.join(' | ')]);
+  });
+  downloadCSV(rows, 'sports_summary.csv');
+}
+
+function downloadSportRoster() {
+  const sport = document.getElementById('sportSelect').value;
+  const rows = [['Rank', 'Name', 'Unit', 'Type', 'Gender']];
+  allData.filter(d => d.sports.includes(sport)).forEach(p => rows.push([p.rank, p.name, p.unit, p.type, p.gender]));
+  downloadCSV(rows, sport.replace(/[^a-z0-9]/gi, '_') + '_roster.csv');
+}
+
+function downloadCSV(rows, name) {
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = name;
+  a.click();
+}
+
+function reset() {
+  allData = [];
+  Object.values(charts).forEach(c => c && c.destroy());
+  charts = {};
+  document.getElementById('dashboard').classList.add('hidden');
+  document.getElementById('dropZone').classList.remove('hidden');
+  document.getElementById('fileInput').value = '';
+}
+</script>
+</body>
+</html>
