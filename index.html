@@ -154,6 +154,196 @@ details[open] .paste-panel summary::after{transform:rotate(90deg)}
 .sport-filter-tab.active{background:var(--text-primary);color:var(--bg-primary);border-color:transparent}
 .progress-bar-bg{height:5px;background:var(--bg-secondary);border-radius:3px;overflow:hidden;flex:1}
 .progress-bar{height:100%;border-radius:3px;transition:width .4s}
+
+/* ─────────────────────────────────────────────
+   Upload divider
+───────────────────────────────────────────── */
+.upload-divider {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin: 1.1rem 0 1.35rem;
+}
+
+.upload-divider::before {
+  content: '';
+
+  position: absolute;
+  inset: 50% 0 auto 0;
+
+  border-top: 1px dashed var(--border-med);
+
+  transform: translateY(-50%);
+}
+
+.upload-divider span {
+  position: relative;
+  z-index: 1;
+
+  padding: 0 14px;
+
+  background: var(--bg-tertiary);
+
+  color: var(--text-secondary);
+
+  font-size: 11px;
+  font-weight: 600;
+
+  letter-spacing: 0.14em;
+}
+
+/* ─────────────────────────────────────────────
+   Paste panel
+───────────────────────────────────────────── */
+.paste-panel {
+  background: var(--bg-primary);
+
+  border: 1px dashed var(--border-med);
+  border-radius: var(--radius-xl);
+
+  padding: 1.15rem;
+}
+
+.paste-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 12px;
+
+  margin-bottom: 0.8rem;
+}
+
+.paste-panel-title {
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    system-ui,
+    sans-serif;
+
+  color: var(--text-primary);
+
+  font-size: 14px;
+  font-weight: 600;
+
+  letter-spacing: -0.01em;
+}
+
+.paste-panel-badge {
+  padding: 4px 10px;
+
+  border-radius: 999px;
+
+  background: rgba(245,166,35,0.10);
+  border: 1px solid rgba(245,166,35,0.22);
+
+  color: var(--amber);
+
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    system-ui,
+    sans-serif;
+
+  font-size: 11px;
+  font-weight: 600;
+
+  white-space: nowrap;
+}
+
+.paste-panel-desc {
+  margin-bottom: 1rem;
+
+  color: var(--text-secondary);
+
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    system-ui,
+    sans-serif;
+
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+#pasteArea {
+  width: 100%;
+  min-height: 180px;
+
+  resize: vertical;
+
+  padding: 12px 14px;
+
+  border-radius: var(--radius-lg);
+
+  border: 1px solid var(--border-light);
+
+  background: var(--bg-secondary);
+
+  color: var(--text-primary);
+
+  font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+  font-size: 12px;
+  line-height: 1.55;
+
+  transition:
+    border-color .16s ease,
+    background .16s ease,
+    box-shadow .16s ease;
+}
+
+#pasteArea:focus {
+  outline: none;
+
+  border-color: var(--blue);
+
+  box-shadow: 0 0 0 3px rgba(55,138,221,0.08);
+}
+
+#pasteArea::placeholder {
+  color: var(--text-secondary);
+}
+
+.paste-panel-actions {
+  display: flex;
+  justify-content: flex-end;
+
+  margin-top: 0.95rem;
+}
+
+@media (max-width: 640px) {
+  .paste-panel {
+    padding: 1rem;
+  }
+
+  .paste-panel-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .paste-panel-actions {
+    justify-content: stretch;
+  }
+
+  .paste-panel-actions .btn {
+    width: 100%;
+  }
+
+  #pasteArea {
+    min-height: 160px;
+  }
+}
 </style>
 </head>
 <body>
@@ -175,16 +365,41 @@ details[open] .paste-panel summary::after{transform:rotate(90deg)}
     <input type="file" id="fileInput" accept=".csv,.xlsx" hidden>
   </div>
 
+  <!-- OR divider -->
+  <div class="upload-divider">
+    <span>OR</span>
+  </div>
+
   <!-- Paste fallback -->
-  <details style="margin-bottom:1.25rem">
-    <div class="paste-panel">
-      <summary><i class="ti ti-clipboard" style="font-size:14px" aria-hidden="true"></i> Or paste from Excel</summary>
-      <textarea id="pasteArea" placeholder="Copy rows from Excel and paste here (Tab-separated)…"></textarea>
-      <div style="margin-top:10px">
-        <button class="btn btn-primary" onclick="processPastedData()"><i class="ti ti-bolt" aria-hidden="true"></i> Generate from paste</button>
+  <div class="paste-panel" style="margin-bottom:1.25rem">
+    <div class="paste-panel-header">
+      <div class="paste-panel-title">
+        <i class="ti ti-table-import" style="font-size:15px" aria-hidden="true"></i>
+        <span>Paste from Excel</span>
+      </div>
+
+      <div class="paste-panel-badge">
+        Recommended
       </div>
     </div>
-  </details>
+
+    <p class="paste-panel-desc">
+      File uploads may be blocked on organization-managed devices.
+      Copy rows directly from Excel and paste them below instead.
+    </p>
+
+    <textarea
+      id="pasteArea"
+      placeholder="Copy rows from Excel and paste here (tab-separated)…"
+    ></textarea>
+
+    <div class="paste-panel-actions">
+      <button class="btn btn-primary" onclick="processPastedData()">
+        <i class="ti ti-bolt" aria-hidden="true"></i>
+        Generate from Paste
+      </button>
+    </div>
+  </div>
 
   <!-- Dashboard -->
   <div id="dashboard" class="hidden">
@@ -396,6 +611,7 @@ function buildGrouped() {
 ═══════════════════════════════════════════════ */
 function renderDashboard() {
   document.getElementById('dropZone').classList.add('hidden');
+  document.querySelector('.upload-divider')?.classList.add('hidden');
   document.getElementById('dashboard').classList.remove('hidden');
   document.getElementById('dashTitle').textContent = currentFileName || 'Dashboard';
   document.getElementById('dashSub').textContent = allData.length + ' respondents · ' + Object.keys(groupedSports).length + ' sports';
@@ -717,6 +933,7 @@ function resetDashboard() {
   Object.values(charts).forEach(c=>c&&c.destroy()); charts={};
   document.getElementById('dashboard').classList.add('hidden');
   document.getElementById('dropZone').classList.remove('hidden');
+  document.querySelector('.upload-divider')?.classList.remove('hidden');
   history.replaceState(null,'',location.pathname);
 }
 
