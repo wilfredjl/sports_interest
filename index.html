@@ -1,827 +1,725 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Sports Interest Dashboard</title>
-
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>4th Division — Sports Interest Dashboard</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-
 <style>
 :root {
-  --bg: #f5f5f5;
-  --card: #ffffff;
-  --text: #111827;
-  --muted: #6b7280;
-  --border: #e5e7eb;
-  --blue: #2563eb;
-  --green: #16a34a;
-  --radius: 14px;
+  --bg-primary:#ffffff;
+  --bg-secondary:#f5f4f1;
+  --bg-tertiary:#eeedea;
+  --text-primary:#1a1a1a;
+  --text-secondary:#6b6a66;
+  --border-light:rgba(0,0,0,0.09);
+  --border-med:rgba(0,0,0,0.16);
+  --radius-md:8px;
+  --radius-lg:12px;
+  --radius-xl:16px;
+  --blue:#378ADD;
+  --teal:#1D9E75;
+  --purple:#7F77DD;
+  --coral:#D85A30;
+  --pink:#D4537E;
+  --amber:#BA7517;
+  --green-bg:#EAF3DE;--green-text:#3B6D11;
+  --blue-bg:#E6F1FB;--blue-text:#185FA5;
+  --red-bg:#FCEBEB;--red-text:#A32D2D;
+  --amber-bg:#FAEEDA;--amber-text:#854F0B;
 }
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg-primary:#1c1c1a;--bg-secondary:#252523;--bg-tertiary:#2e2e2b;
+    --text-primary:#f0efe9;--text-secondary:#9a9990;
+    --border-light:rgba(255,255,255,0.08);--border-med:rgba(255,255,255,0.15);
+    --green-bg:#27500A;--green-text:#C0DD97;
+    --blue-bg:#0C447C;--blue-text:#B5D4F4;
+    --red-bg:#501313;--red-text:#F7C1C1;
+    --amber-bg:#633806;--amber-text:#FAC775;
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;color:var(--text-primary);background:var(--bg-tertiary);min-height:100vh;padding:2rem 1rem;font-size:15px;line-height:1.6}
+.container{max-width:1080px;margin:0 auto}
+.hidden{display:none!important}
 
-* {
-  box-sizing: border-box;
-}
+/* ── Header ── */
+.site-header{margin-bottom:2rem;display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap}
+.site-header h1{font-size:22px;font-weight:500;letter-spacing:-0.01em}
+.site-header p{font-size:13px;color:var(--text-secondary);margin-top:3px}
+.header-badge{font-size:11px;padding:3px 10px;border-radius:20px;background:var(--blue-bg);color:var(--blue-text);font-weight:500;align-self:flex-start;margin-top:4px}
 
-body {
-  margin: 0;
-  padding: 24px;
-  background: var(--bg);
-  color: var(--text);
-  font-family: Inter, system-ui, sans-serif;
-}
+/* ── Drop zone ── */
+.drop-zone{background:var(--bg-primary);border:1.5px dashed var(--border-med);border-radius:var(--radius-xl);padding:3.5rem 2rem;text-align:center;cursor:pointer;transition:background .15s,border-color .15s;margin-bottom:1.25rem}
+.drop-zone:hover,.drop-zone.over{background:var(--bg-secondary);border-color:var(--blue)}
+.drop-zone .dz-icon{font-size:32px;color:var(--text-secondary);margin-bottom:12px;display:block}
+.drop-zone h3{font-size:16px;font-weight:500;margin-bottom:5px}
+.drop-zone p{font-size:13px;color:var(--text-secondary)}
 
-.container {
-  max-width: 1200px;
-  margin: auto;
-}
+/* ── Paste panel ── */
+.paste-panel{background:var(--bg-primary);border:0.5px solid var(--border-light);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:1.25rem}
+.paste-panel summary{font-size:13px;font-weight:500;color:var(--text-secondary);cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px}
+.paste-panel summary::after{content:'\203A';font-size:16px;transition:transform .2s}
+details[open] .paste-panel summary::after{transform:rotate(90deg)}
+.paste-panel textarea{width:100%;height:140px;margin-top:12px;padding:10px;border:0.5px solid var(--border-med);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-family:monospace;font-size:12px;resize:vertical}
+.paste-panel textarea:focus{outline:none;border-color:var(--blue)}
 
-.header {
-  margin-bottom: 24px;
-}
+/* ── Buttons ── */
+.btn{font-size:12px;padding:6px 14px;border:0.5px solid var(--border-med);border-radius:var(--radius-md);cursor:pointer;background:var(--bg-primary);color:var(--text-primary);display:inline-flex;align-items:center;gap:6px;transition:background .12s;white-space:nowrap;text-decoration:none}
+.btn:hover{background:var(--bg-secondary)}
+.btn-primary{background:var(--text-primary);color:var(--bg-primary);border-color:transparent}
+.btn-primary:hover{opacity:.85;background:var(--text-primary)}
+.btn-group{display:flex;gap:8px;flex-wrap:wrap}
 
-.header h1 {
-  margin: 0;
-  font-size: 32px;
-}
+/* ── Cards ── */
+.card{background:var(--bg-primary);border:0.5px solid var(--border-light);border-radius:var(--radius-lg);padding:1.1rem 1.25rem;margin-bottom:12px}
 
-.header p {
-  color: var(--muted);
-}
+/* ── Metrics ── */
+.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+@media(max-width:640px){.metric-grid{grid-template-columns:repeat(2,1fr)}}
+.metric{background:var(--bg-secondary);border-radius:var(--radius-md);padding:14px 16px}
+.metric .label{font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.metric .value{font-size:26px;font-weight:500}
 
-.drop-zone {
-  background: var(--card);
-  border: 2px dashed var(--border);
-  border-radius: var(--radius);
-  padding: 48px;
-  text-align: center;
-  cursor: pointer;
-  transition: 0.2s;
-}
+/* ── Section title ── */
+.section-title{font-size:11px;font-weight:500;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
 
-.drop-zone:hover {
-  border-color: var(--blue);
-}
+/* ── Two col layout ── */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){.two-col{grid-template-columns:1fr}}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+@media(max-width:780px){.three-col{grid-template-columns:1fr 1fr}}
+@media(max-width:500px){.three-col{grid-template-columns:1fr}}
 
-.hidden {
-  display: none;
-}
+/* ── Chart wrappers ── */
+.chart-wrap{position:relative;width:100%}
 
-.metrics {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 16px;
-  margin: 24px 0;
-}
+/* ── Warning ── */
+.warning-box{background:var(--amber-bg);color:var(--amber-text);font-size:13px;padding:10px 14px;border-radius:var(--radius-md);margin-bottom:10px;display:flex;align-items:center;gap:8px}
 
-.metric {
-  background: var(--card);
-  border-radius: var(--radius);
-  padding: 20px;
-}
+/* ── Sport cards (expandable) ── */
+.sport-card{border:0.5px solid var(--border-light);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:8px;background:var(--bg-primary)}
+.sport-header{padding:12px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;transition:background .12s}
+.sport-header:hover{background:var(--bg-secondary)}
+.sport-header-left{display:flex;align-items:center;gap:10px}
+.sport-name-text{font-size:14px;font-weight:500}
+.sport-count-badge{font-size:11px;padding:2px 8px;border-radius:10px;background:var(--bg-secondary);color:var(--text-secondary);border:0.5px solid var(--border-light)}
+.sport-chevron{font-size:16px;color:var(--text-secondary);transition:transform .2s}
+.sport-chevron.open{transform:rotate(180deg)}
+.sport-body{border-top:0.5px solid var(--border-light);display:none}
+.sport-body.open{display:block}
+.person-row{padding:10px 16px;border-bottom:0.5px solid var(--border-light);display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+.person-row:last-child{border-bottom:none}
+.person-main{font-size:13px;font-weight:500}
+.person-sub{font-size:12px;color:var(--text-secondary);margin-top:2px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.person-phone{display:inline-flex;align-items:center;gap:4px;color:var(--text-secondary)}
 
-.metric .label {
-  color: var(--muted);
-  font-size: 14px;
-}
+/* ── Badges ── */
+.badge{font-size:11px;padding:2px 9px;border-radius:10px;font-weight:500;white-space:nowrap}
+.badge-nsf{background:var(--blue-bg);color:var(--blue-text)}
+.badge-reg{background:var(--green-bg);color:var(--green-text)}
+.badge-medical{background:var(--red-bg);color:var(--red-text)}
 
-.metric .value {
-  font-size: 30px;
-  font-weight: bold;
-  margin-top: 8px;
-}
+/* ── Search row ── */
+.search-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.search-row input,.search-row select{font-size:13px;padding:7px 10px;border:0.5px solid var(--border-light);border-radius:var(--radius-md);background:var(--bg-primary);color:var(--text-primary);flex:1;min-width:140px}
+.search-row input:focus,.search-row select:focus{outline:none;border-color:var(--blue)}
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 20px;
-}
+/* ── Summary box ── */
+.summary-box{background:var(--bg-secondary);border-radius:var(--radius-md);padding:14px;font-size:13px;line-height:1.8;color:var(--text-secondary)}
+.summary-box strong{color:var(--text-primary)}
 
-.card {
-  background: var(--card);
-  border-radius: var(--radius);
-  padding: 20px;
-}
+/* ── Action row ── */
+.action-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem;flex-wrap:wrap;gap:10px}
+.action-title{font-size:18px;font-weight:500}
+.action-sub{font-size:12px;color:var(--text-secondary);margin-top:3px}
 
-.card h2 {
-  margin-top: 0;
-  font-size: 18px;
-}
-
-canvas {
-  max-height: 350px;
-}
-
-.sport-card {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  margin-bottom: 12px;
-  overflow: hidden;
-}
-
-.sport-header {
-  background: #f9fafb;
-  padding: 14px;
-  display: flex;
-  justify-content: space-between;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.sport-body {
-  padding: 14px;
-  display: none;
-}
-
-.person-row {
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.badge {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.badge.nsf {
-  background: #dbeafe;
-  color: #1d4ed8;
-}
-
-.badge.regular {
-  background: #dcfce7;
-  color: #15803d;
-}
-
-.search-row {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.search-row input,
-.search-row select {
-  padding: 10px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  width: 100%;
-}
-
-button {
-  border: none;
-  background: var(--blue);
-  color: white;
-  padding: 10px 16px;
-  border-radius: 10px;
-  cursor: pointer;
-}
-
-.warning {
-  background: #fef2f2;
-  color: #991b1b;
-  padding: 12px;
-  border-radius: 10px;
-  margin-bottom: 12px;
-}
-
-.summary-box {
-  background: #eff6ff;
-  padding: 16px;
-  border-radius: 12px;
-  line-height: 1.7;
-}
+/* ── Share modal ── */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:100;padding:1rem}
+.modal{background:var(--bg-primary);border-radius:var(--radius-xl);padding:1.5rem;max-width:560px;width:100%;border:0.5px solid var(--border-med)}
+.modal h3{font-size:16px;font-weight:500;margin-bottom:6px}
+.modal p{font-size:13px;color:var(--text-secondary);margin-bottom:14px;line-height:1.6}
+.modal-tabs{display:flex;gap:4px;margin-bottom:1rem}
+.modal-tab{font-size:12px;padding:5px 14px;border:0.5px solid var(--border-light);border-radius:20px;cursor:pointer;background:transparent;color:var(--text-secondary)}
+.modal-tab.active{background:var(--text-primary);color:var(--bg-primary);border-color:transparent}
+.share-url-box{display:flex;gap:8px;margin-bottom:10px}
+.share-url-box input{flex:1;font-size:12px;padding:8px 10px;border:0.5px solid var(--border-med);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-secondary);font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.share-note{font-size:11px;color:var(--text-secondary);line-height:1.6}
+.sport-filter-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.sport-filter-tab{font-size:12px;padding:4px 12px;border:0.5px solid var(--border-light);border-radius:20px;cursor:pointer;background:transparent;color:var(--text-secondary);transition:all .12s}
+.sport-filter-tab.active{background:var(--text-primary);color:var(--bg-primary);border-color:transparent}
+.progress-bar-bg{height:5px;background:var(--bg-secondary);border-radius:3px;overflow:hidden;flex:1}
+.progress-bar{height:100%;border-radius:3px;transition:width .4s}
 </style>
 </head>
 <body>
-
-<div class="card" style="margin-bottom:20px;">
-  <h2>Paste Excel Data</h2>
-
-  <textarea
-    id="pasteArea"
-    placeholder="Copy from Excel and paste here..."
-    style="
-      width:100%;
-      height:200px;
-      padding:12px;
-      border-radius:12px;
-      border:1px solid var(--border);
-      resize:vertical;
-      font-family:monospace;
-    "
-  ></textarea>
-
-  <br><br>
-
-  <button onclick="processPastedData()">
-    Generate Dashboard
-  </button>
-</div>
-  
 <div class="container">
 
-  <div class="header">
-    <h1>Sports Interest Dashboard</h1>
-    <p>Upload your CSV or XLSX export to generate reports and analytics.</p>
+  <!-- Header -->
+  <div class="site-header">
+    <div>
+      <h1>Sports Interest Dashboard</h1>
+      <p>4th Division, SCDF — Convenor Management Tool</p>
+    </div>
+    <span class="header-badge">Main Convenor View</span>
   </div>
 
+  <!-- Upload zone -->
   <div id="dropZone" class="drop-zone">
-    <i class="ti ti-upload" style="font-size:48px"></i>
-    <h2>Drop CSV/XLSX file here</h2>
-    <p>or click to upload</p>
+    <i class="ti ti-upload dz-icon" aria-hidden="true"></i>
+    <h3>Drop CSV or XLSX here</h3>
+    <p>or click to select your form export</p>
     <input type="file" id="fileInput" accept=".csv,.xlsx" hidden>
   </div>
 
+  <!-- Paste fallback -->
+  <details style="margin-bottom:1.25rem">
+    <div class="paste-panel">
+      <summary><i class="ti ti-clipboard" style="font-size:14px" aria-hidden="true"></i> Or paste from Excel</summary>
+      <textarea id="pasteArea" placeholder="Copy rows from Excel and paste here (Tab-separated)…"></textarea>
+      <div style="margin-top:10px">
+        <button class="btn btn-primary" onclick="processPastedData()"><i class="ti ti-bolt" aria-hidden="true"></i> Generate from paste</button>
+      </div>
+    </div>
+  </details>
+
+  <!-- Dashboard -->
   <div id="dashboard" class="hidden">
 
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:12px;flex-wrap:wrap;">
+    <div class="action-row">
       <div>
-        <h2 style="margin:0">Generated Dashboard</h2>
-        <p id="fileName" style="margin:4px 0;color:var(--muted)"></p>
+        <div class="action-title" id="dashTitle">Dashboard</div>
+        <div class="action-sub" id="dashSub"></div>
       </div>
-
-      <div style="display:flex;gap:10px;">
-        <button onclick="downloadSummary()">Export Summary CSV</button>
-        <button onclick="resetDashboard()">New Upload</button>
+      <div class="btn-group">
+        <button class="btn" onclick="openShareModal()"><i class="ti ti-share" aria-hidden="true"></i> Share dashboard</button>
+        <button class="btn" onclick="downloadSummary()"><i class="ti ti-download" aria-hidden="true"></i> Export CSV</button>
+        <button class="btn" onclick="resetDashboard()"><i class="ti ti-refresh" aria-hidden="true"></i> New file</button>
       </div>
     </div>
 
+    <!-- Warnings -->
     <div id="warnings"></div>
 
-    <div class="metrics">
-      <div class="metric">
-        <div class="label">Total Respondents</div>
-        <div class="value" id="totalRespondents">0</div>
-      </div>
+    <!-- Metrics -->
+    <div class="metric-grid">
+      <div class="metric"><div class="label">Respondents</div><div class="value" id="mTotal">0</div></div>
+      <div class="metric"><div class="label">Sports</div><div class="value" id="mSports">0</div></div>
+      <div class="metric"><div class="label">NSF</div><div class="value" id="mNsf">0</div></div>
+      <div class="metric"><div class="label">Regular</div><div class="value" id="mReg">0</div></div>
+    </div>
 
-      <div class="metric">
-        <div class="label">Sports Available</div>
-        <div class="value" id="totalSports">0</div>
+    <!-- Charts row -->
+    <div class="three-col" style="margin-bottom:12px">
+      <div class="card">
+        <div class="section-title">Gender split</div>
+        <div class="chart-wrap" style="height:180px"><canvas id="genderChart" role="img" aria-label="Doughnut chart showing gender breakdown">Gender breakdown.</canvas></div>
       </div>
-
-      <div class="metric">
-        <div class="label">NSF</div>
-        <div class="value" id="nsfCount">0</div>
+      <div class="card">
+        <div class="section-title">By unit</div>
+        <div class="chart-wrap" style="height:180px"><canvas id="unitChart" role="img" aria-label="Bar chart of respondents per unit">Unit breakdown.</canvas></div>
       </div>
-
-      <div class="metric">
-        <div class="label">Regular</div>
-        <div class="value" id="regularCount">0</div>
+      <div class="card">
+        <div class="section-title">Sports per person</div>
+        <div class="chart-wrap" style="height:180px"><canvas id="distChart" role="img" aria-label="Histogram of how many sports each person selected">Sports-per-person distribution.</canvas></div>
       </div>
     </div>
 
-    <div class="grid">
-
-      <div class="card">
-        <h2>Sports Popularity</h2>
-        <canvas id="sportsChart"></canvas>
-      </div>
-
-      <div class="card">
-        <h2>Gender Distribution</h2>
-        <canvas id="genderChart"></canvas>
-      </div>
-
-      <div class="card">
-        <h2>Unit Distribution</h2>
-        <canvas id="unitChart"></canvas>
-      </div>
-
-      <div class="card">
-        <h2>Summary Insights</h2>
-        <div class="summary-box" id="summaryInsights"></div>
-      </div>
-
+    <!-- Sports popularity chart -->
+    <div class="card" style="margin-bottom:12px">
+      <div class="section-title">Sports popularity</div>
+      <div class="chart-wrap" style="height:240px"><canvas id="sportsChart" role="img" aria-label="Horizontal bar chart of sport interest counts">Sports by number of interested participants.</canvas></div>
     </div>
 
-    <div class="card" style="margin-top:20px;">
-      <h2>Search & Filters</h2>
+    <!-- Summary insights -->
+    <div class="card" style="margin-bottom:12px">
+      <div class="section-title">Summary insights</div>
+      <div class="summary-box" id="summaryInsights"></div>
+    </div>
+
+    <!-- Sport → participants -->
+    <div class="card">
+      <div class="section-title" style="margin-bottom:10px">Sport → participants</div>
 
       <div class="search-row">
-        <input type="text" id="searchInput" placeholder="Search by name, sport or unit..." oninput="renderSportCards()">
-
+        <input type="text" id="searchInput" placeholder="Search by name, unit, or sport…" oninput="renderSportCards()">
         <select id="typeFilter" onchange="renderSportCards()">
-          <option value="all">All Types</option>
-          <option value="nsf">NSF</option>
-          <option value="regular">Regular</option>
+          <option value="all">All types</option>
+          <option value="nsf">NSF only</option>
+          <option value="regular">Regular only</option>
+        </select>
+        <select id="unitFilter" onchange="renderSportCards()">
+          <option value="all">All units</option>
         </select>
       </div>
-    </div>
 
-    <div class="card" style="margin-top:20px;">
-      <h2>Sport → Participants</h2>
+      <div class="sport-filter-tabs" id="sportFilterTabs"></div>
+
       <div id="sportCards"></div>
     </div>
 
+  </div><!-- /dashboard -->
+</div><!-- /container -->
+
+<!-- Share modal -->
+<div class="modal-backdrop hidden" id="shareModal">
+  <div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3><i class="ti ti-share" style="font-size:16px;vertical-align:-2px;margin-right:6px" aria-hidden="true"></i>Share dashboard</h3>
+      <button class="btn" onclick="closeShareModal()" style="padding:4px 10px"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>
+
+    <div class="modal-tabs">
+      <button class="modal-tab active" onclick="switchShareTab('link',this)">Share link</button>
+      <button class="modal-tab" onclick="switchShareTab('convenor',this)">By convenor</button>
+    </div>
+
+    <!-- Link tab -->
+    <div id="shareTabLink">
+      <p>Anyone with this link can open a read-only view of the current dashboard in their browser — no upload needed. The data is encoded directly in the URL.</p>
+      <div class="share-url-box">
+        <input type="text" id="shareUrlInput" readonly>
+        <button class="btn btn-primary" onclick="copyShareUrl()"><i class="ti ti-copy" aria-hidden="true"></i> Copy</button>
+      </div>
+      <div class="share-note" id="shareUrlNote"></div>
+    </div>
+
+    <!-- Per-convenor tab -->
+    <div id="shareTabConvenor" class="hidden">
+      <p>Generate a filtered link for each sport convenor — they only see their own sport's participants.</p>
+      <div id="convenorList" style="max-height:320px;overflow-y:auto"></div>
+    </div>
   </div>
 </div>
 
 <script>
+/* ═══════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════ */
 let allData = [];
 let groupedSports = {};
 let charts = {};
+let currentFileName = '';
 
+/* ═══════════════════════════════════════════════
+   UPLOAD / PARSE
+═══════════════════════════════════════════════ */
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
 
-
 dropZone.addEventListener('click', () => fileInput.click());
-
-fileInput.addEventListener('change', e => {
-  const file = e.target.files[0];
-  processFile(file);
-});
-
-
-dropZone.addEventListener('dragover', e => {
-  e.preventDefault();
-});
-
-
-dropZone.addEventListener('drop', e => {
-  e.preventDefault();
-  const file = e.dataTransfer.files[0];
-  processFile(file);
-});
-
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('over'); processFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', e => processFile(e.target.files[0]));
 
 function processFile(file) {
   if (!file) return;
-
-  document.getElementById('fileName').textContent = file.name;
-
+  currentFileName = file.name;
   const ext = file.name.split('.').pop().toLowerCase();
-
   if (ext === 'csv') {
-    Papa.parse(file, {
-      header: false,
-      skipEmptyLines: true,
-    
-      complete: function(results) {
-    
-        const rows = results.data;
-    
-        // Find actual header row
-        const headerIndex = rows.findIndex(row =>
-          row.some(cell =>
-            String(cell).toLowerCase().includes('response id')
-          )
-        );
-    
-        if (headerIndex === -1) {
-          alert('Could not locate form headers.');
-          return;
-        }
-    
-        const headers = rows[headerIndex];
-    
-        const formattedRows = rows
-          .slice(headerIndex + 1)
-          .map(row => {
-    
-            const obj = {};
-    
-            headers.forEach((header, i) => {
-              obj[header] = row[i];
-            });
-    
-            return obj;
-          });
-    
-        processRows(formattedRows);
-      }
-    });
-  }
-  else if (ext === 'xlsx') {
+    Papa.parse(file, { header: false, skipEmptyLines: true, complete: r => handleRawRows(r.data) });
+  } else if (ext === 'xlsx') {
     const reader = new FileReader();
-
-    reader.onload = function(e) {
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rawRows = XLSX.utils.sheet_to_json(sheet, {
-        header: 1
-      });
-      
-      const headerIndex = rawRows.findIndex(row =>
-        row.some(cell =>
-          String(cell).toLowerCase().includes('response id')
-        )
-      );
-      
-      if (headerIndex === -1) {
-        alert('Could not locate form headers.');
-        return;
-      }
-      
-      const headers = rawRows[headerIndex];
-      
-      const formattedRows = rawRows
-        .slice(headerIndex + 1)
-        .map(row => {
-      
-          const obj = {};
-      
-          headers.forEach((header, i) => {
-            obj[header] = row[i];
-          });
-      
-          return obj;
-        });
-      
-      processRows(formattedRows);
+    reader.onload = e => {
+      const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+      handleRawRows(rows);
     };
     reader.readAsArrayBuffer(file);
-  }
-  else {
-    alert('Unsupported file format');
+  } else {
+    alert('Unsupported format. Please use CSV or XLSX.');
   }
 }
 
 function processPastedData() {
-
   const raw = document.getElementById('pasteArea').value;
-
-  if (!raw.trim()) {
-    alert('Paste some data first.');
-    return;
-  }
-
-  const rows = raw
-    .trim()
-    .split('\n')
-    .map(row => row.split('\t'));
-
-  const headerIndex = rows.findIndex(row =>
-    row.some(cell =>
-      String(cell).toLowerCase().includes('response id')
-    )
-  );
-
-  if (headerIndex === -1) {
-    alert('Could not locate form headers.');
-    return;
-  }
-
-  const headers = rows[headerIndex];
-
-  const formattedRows = rows
-    .slice(headerIndex + 1)
-    .map(row => {
-
-      const obj = {};
-
-      headers.forEach((header, i) => {
-        obj[header] = row[i];
-      });
-
-      return obj;
-    });
-
-  processRows(formattedRows);
+  if (!raw.trim()) { alert('Paste some data first.'); return; }
+  const rows = raw.trim().split('\n').map(r => r.split('\t'));
+  handleRawRows(rows);
 }
 
+function handleRawRows(rows) {
+  const hIdx = rows.findIndex(r => r.some(c => String(c).toLowerCase().includes('response id')));
+  if (hIdx === -1) { alert('Could not find the header row. Make sure this is an unmodified form export.'); return; }
+  const headers = rows[hIdx];
+  const formatted = rows.slice(hIdx + 1).map(row => {
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = row[i] !== undefined ? String(row[i]) : ''; });
+    return obj;
+  }).filter(obj => Object.values(obj).some(v => v.trim()));
+  processRows(formatted);
+}
 
 function processRows(rows) {
-
   allData = [];
-
   rows.forEach(row => {
-
     const keys = Object.keys(row);
-
-    const findField = (possibleNames) => {
-      for (const key of keys) {
-        const normalized = key.toLowerCase();
-
-        for (const name of possibleNames) {
-          if (normalized.includes(name)) {
-            return row[key];
-          }
-        }
+    const find = (...names) => {
+      for (const k of keys) {
+        const n = k.toLowerCase();
+        for (const nm of names) if (n.includes(nm)) return (row[k] || '').trim();
       }
-
       return '';
     };
-
-    const sportsRaw = findField(['sport']);
-
-    const sports = String(sportsRaw)
-      .split(';')
-      .map(s => s.trim())
-      .filter(Boolean);
-
+    const sportsRaw = find('sport');
+    const sports = sportsRaw.split(';').map(s => s.trim()).filter(Boolean);
     allData.push({
-      rank: findField(['rank']),
-      name: findField(['full name', 'name']),
-      unit: findField(['unit']),
-      gender: findField(['gender']),
-      type: findField(['nsf / regular', 'nsf']),
-      medical: findField(['medical']),
+      rank:    find('rank'),
+      name:    find('full name', 'name'),
+      unit:    find('unit'),
+      gender:  find('gender'),
+      type:    find('nsf / regular', 'nsf'),
+      medical: find('medical'),
+      phone:   find('mobile', 'phone', 'contact'),
       sports
     });
   });
-
-  buildGroupedSports();
+  buildGrouped();
   renderDashboard();
+  checkSharedLoad(); // no-op after first real load
 }
 
-
-function buildGroupedSports() {
-
+function buildGrouped() {
   groupedSports = {};
-
-  allData.forEach(person => {
-
-    person.sports.forEach(sport => {
-
-      if (!groupedSports[sport]) {
-        groupedSports[sport] = [];
-      }
-
-      groupedSports[sport].push(person);
-    });
-  });
+  allData.forEach(p => p.sports.forEach(s => {
+    if (!groupedSports[s]) groupedSports[s] = [];
+    groupedSports[s].push(p);
+  }));
 }
 
-
+/* ═══════════════════════════════════════════════
+   RENDER
+═══════════════════════════════════════════════ */
 function renderDashboard() {
-
   document.getElementById('dropZone').classList.add('hidden');
   document.getElementById('dashboard').classList.remove('hidden');
+  document.getElementById('dashTitle').textContent = currentFileName || 'Dashboard';
+  document.getElementById('dashSub').textContent = allData.length + ' respondents · ' + Object.keys(groupedSports).length + ' sports';
 
-  document.getElementById('totalRespondents').textContent = allData.length;
-  document.getElementById('totalSports').textContent = Object.keys(groupedSports).length;
-
-  const nsf = allData.filter(x => String(x.type).toLowerCase().includes('nsf')).length;
-
-  document.getElementById('nsfCount').textContent = nsf;
-  document.getElementById('regularCount').textContent = allData.length - nsf;
+  const nsf = allData.filter(x => x.type.toLowerCase().includes('nsf')).length;
+  document.getElementById('mTotal').textContent = allData.length;
+  document.getElementById('mSports').textContent = Object.keys(groupedSports).length;
+  document.getElementById('mNsf').textContent = nsf;
+  document.getElementById('mReg').textContent = allData.length - nsf;
 
   renderWarnings();
   renderCharts();
   renderSummary();
+  buildUnitFilter();
+  buildSportFilterTabs();
+  renderSportCards();
+  buildShareUrl();
+}
+
+function renderWarnings() {
+  const warns = [];
+  const missing = allData.filter(x => !x.name);
+  if (missing.length) warns.push(missing.length + ' rows missing a name.');
+  const seen = new Set(); const dupes = [];
+  allData.forEach(x => { const k = x.name.toLowerCase(); if (seen.has(k) && x.name) dupes.push(x.name); seen.add(k); });
+  if (dupes.length) warns.push('Possible duplicate submissions: ' + dupes.join(', ') + '.');
+  document.getElementById('warnings').innerHTML = warns.map(w =>
+    `<div class="warning-box"><i class="ti ti-alert-triangle" style="font-size:15px;flex-shrink:0" aria-hidden="true"></i>${escHtml(w)}</div>`
+  ).join('');
+}
+
+function renderCharts() {
+  Object.values(charts).forEach(c => c && c.destroy());
+  charts = {};
+
+  const dark = window.matchMedia('(prefers-color-scheme:dark)').matches;
+  const grid = dark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.06)';
+  const tick = dark ? '#9a9990' : '#6b6a66';
+
+  // Gender doughnut
+  const gc = {}; allData.forEach(x => { const g = x.gender || 'Unknown'; gc[g] = (gc[g]||0)+1; });
+  charts.gender = new Chart(document.getElementById('genderChart'), {
+    type: 'doughnut',
+    data: { labels: Object.keys(gc), datasets: [{ data: Object.values(gc), backgroundColor: ['#378ADD','#D4537E','#888780','#1D9E75'], borderWidth:0 }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ font:{size:11}, boxWidth:10, padding:8, color:tick } } } }
+  });
+
+  // Unit bar
+  const uc = {}; allData.forEach(x => { const u = x.unit||'Unknown'; uc[u]=(uc[u]||0)+1; });
+  const uKeys = Object.keys(uc).sort((a,b)=>uc[b]-uc[a]);
+  charts.unit = new Chart(document.getElementById('unitChart'), {
+    type:'bar',
+    data:{ labels:uKeys, datasets:[{ data:uKeys.map(k=>uc[k]), backgroundColor:'#1D9E75', borderWidth:0, borderRadius:3 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{ticks:{font:{size:10},color:tick},grid:{color:grid}}, y:{ticks:{stepSize:1,color:tick},grid:{color:grid}} } }
+  });
+
+  // Distribution histogram
+  const dc = {}; allData.forEach(x => { const n=x.sports.length; dc[n]=(dc[n]||0)+1; });
+  const dKeys = Object.keys(dc).map(Number).sort((a,b)=>a-b);
+  charts.dist = new Chart(document.getElementById('distChart'), {
+    type:'bar',
+    data:{ labels:dKeys.map(k=>k+(k===1?' sport':' sports')), datasets:[{ data:dKeys.map(k=>dc[k]), backgroundColor:'#7F77DD', borderWidth:0, borderRadius:3 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{ticks:{font:{size:10},color:tick},grid:{color:grid}}, y:{ticks:{stepSize:1,color:tick},grid:{color:grid}} } }
+  });
+
+  // Sports popularity horizontal bar
+  const sList = Object.entries(groupedSports).sort((a,b)=>b[1].length-a[1].length);
+  const sLabels = sList.map(([s])=>s);
+  const sCounts = sList.map(([,p])=>p.length);
+  const sHeight = Math.max(220, sLabels.length * 26 + 40);
+  document.getElementById('sportsChart').parentElement.style.height = sHeight + 'px';
+  charts.sports = new Chart(document.getElementById('sportsChart'), {
+    type:'bar',
+    data:{ labels:sLabels, datasets:[{ data:sCounts, backgroundColor:'#378ADD', borderWidth:0, borderRadius:3 }] },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{ x:{ticks:{stepSize:1,color:tick},grid:{color:grid}}, y:{ticks:{font:{size:11},color:tick},grid:{display:false}} }
+    }
+  });
+}
+
+function renderSummary() {
+  const top = Object.entries(groupedSports).sort((a,b)=>b[1].length-a[1].length)[0];
+  const avg = (allData.reduce((s,x)=>s+x.sports.length,0)/allData.length).toFixed(1);
+  const medCount = allData.filter(x => { const m=x.medical.toLowerCase(); return m && !['nil','none','no.','no','ni','-','n/a','nill','na',''].includes(m); }).length;
+  document.getElementById('summaryInsights').innerHTML =
+    `<strong>${escHtml(top[0])}</strong> is the most popular sport with <strong>${top[1].length}</strong> interested participants.<br>
+    Respondents indicated an average of <strong>${avg}</strong> sports each.<br>
+    <strong>${Object.keys(groupedSports).length}</strong> sport categories detected across <strong>${allData.length}</strong> respondents.` +
+    (medCount ? `<br><strong>${medCount}</strong> respondent${medCount>1?'s':''} have flagged a medical condition — check individual cards below.` : '');
+}
+
+function buildUnitFilter() {
+  const units = [...new Set(allData.map(x=>x.unit).filter(Boolean))].sort();
+  const sel = document.getElementById('unitFilter');
+  sel.innerHTML = '<option value="all">All units</option>' + units.map(u=>`<option value="${escHtml(u)}">${escHtml(u)}</option>`).join('');
+}
+
+function buildSportFilterTabs() {
+  const sorted = Object.entries(groupedSports).sort((a,b)=>b[1].length-a[1].length);
+  const tabs = document.getElementById('sportFilterTabs');
+  tabs.innerHTML = `<button class="sport-filter-tab active" onclick="setSportFilter('all',this)">All sports</button>` +
+    sorted.map(([s])=>`<button class="sport-filter-tab" onclick="setSportFilter(${JSON.stringify(s)},this)">${escHtml(s)}</button>`).join('');
+}
+
+let activeSportFilter = 'all';
+function setSportFilter(sport, btn) {
+  activeSportFilter = sport;
+  document.querySelectorAll('.sport-filter-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
   renderSportCards();
 }
 
-
-function renderWarnings() {
-
-  const warnings = [];
-
-  const missingNames = allData.filter(x => !x.name);
-
-  if (missingNames.length > 0) {
-    warnings.push(`${missingNames.length} rows missing names.`);
-  }
-
-  const duplicateNames = [];
-  const seen = new Set();
-
-  allData.forEach(x => {
-    const key = x.name.toLowerCase();
-
-    if (seen.has(key)) {
-      duplicateNames.push(x.name);
-    }
-
-    seen.add(key);
-  });
-
-  if (duplicateNames.length > 0) {
-    warnings.push(`Duplicate submissions detected: ${duplicateNames.join(', ')}`);
-  }
-
-  const el = document.getElementById('warnings');
-
-  el.innerHTML = warnings.map(w => `<div class="warning">${w}</div>`).join('');
-}
-
-
-function renderCharts() {
-
-  Object.values(charts).forEach(chart => {
-    if (chart) chart.destroy();
-  });
-
-
-  const sportsLabels = Object.keys(groupedSports);
-  const sportsCounts = sportsLabels.map(s => groupedSports[s].length);
-
-  charts.sports = new Chart(document.getElementById('sportsChart'), {
-    type: 'bar',
-    data: {
-      labels: sportsLabels,
-      datasets: [{
-        label: 'Participants',
-        data: sportsCounts
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: false }
-      }
-    }
-  });
-
-
-  const genderCounts = {};
-
-  allData.forEach(x => {
-    const gender = x.gender || 'Unknown';
-    genderCounts[gender] = (genderCounts[gender] || 0) + 1;
-  });
-
-  charts.gender = new Chart(document.getElementById('genderChart'), {
-    type: 'pie',
-    data: {
-      labels: Object.keys(genderCounts),
-      datasets: [{
-        data: Object.values(genderCounts),
-  
-        backgroundColor: [
-          '#FF6384', // Female
-          '#36A2EB'  // Male
-        ],
-  
-        borderColor: '#111827',
-        borderWidth: 2
-      }]
-    }
-  });
-
-  const unitCounts = {};
-
-  allData.forEach(x => {
-    const unit = x.unit || 'Unknown';
-    unitCounts[unit] = (unitCounts[unit] || 0) + 1;
-  });
-
-  charts.unit = new Chart(document.getElementById('unitChart'), {
-    type: 'bar',
-    data: {
-      labels: Object.keys(unitCounts),
-      datasets: [{
-        label: 'People',
-        data: Object.values(unitCounts)
-      }]
-    },
-    options: {
-      plugins: {
-        legend: { display: false }
-      }
-    }
-  });
-}
-
-
-function renderSummary() {
-
-  const topSport = Object.entries(groupedSports)
-    .sort((a, b) => b[1].length - a[1].length)[0];
-
-  const avgSports = (
-    allData.reduce((acc, x) => acc + x.sports.length, 0) / allData.length
-  ).toFixed(1);
-
-  document.getElementById('summaryInsights').innerHTML = `
-    <strong>${topSport[0]}</strong> is the most popular sport with <strong>${topSport[1].length}</strong> participants.
-    <br><br>
-    Respondents selected an average of <strong>${avgSports}</strong> sports each.
-    <br><br>
-    Total sports categories detected: <strong>${Object.keys(groupedSports).length}</strong>.
-  `;
-}
-
-
 function renderSportCards() {
+  const search  = document.getElementById('searchInput').value.toLowerCase();
+  const type    = document.getElementById('typeFilter').value;
+  const unit    = document.getElementById('unitFilter').value;
+  const sport   = activeSportFilter;
 
-  const search = document.getElementById('searchInput').value.toLowerCase();
-  const typeFilter = document.getElementById('typeFilter').value;
-
+  const sorted = Object.entries(groupedSports).sort((a,b)=>b[1].length-a[1].length);
   const container = document.getElementById('sportCards');
 
-  const sortedSports = Object.entries(groupedSports)
-    .sort((a, b) => b[1].length - a[1].length);
-
-
-  container.innerHTML = sortedSports.map(([sport, participants], index) => {
-
-    const filtered = participants.filter(person => {
-
-      const matchesSearch =
-        person.name.toLowerCase().includes(search) ||
-        person.unit.toLowerCase().includes(search) ||
-        sport.toLowerCase().includes(search);
-
-      const matchesType =
-        typeFilter === 'all' ||
-        person.type.toLowerCase().includes(typeFilter);
-
-      return matchesSearch && matchesType;
+  container.innerHTML = sorted.map(([sportName, participants], idx) => {
+    if (sport !== 'all' && sportName !== sport) return '';
+    const filtered = participants.filter(p => {
+      const matchSearch = !search ||
+        p.name.toLowerCase().includes(search) ||
+        p.unit.toLowerCase().includes(search) ||
+        sportName.toLowerCase().includes(search) ||
+        p.rank.toLowerCase().includes(search);
+      const matchType = type==='all' || p.type.toLowerCase().includes(type);
+      const matchUnit = unit==='all' || p.unit===unit;
+      return matchSearch && matchType && matchUnit;
     });
+    if (!filtered.length) return '';
 
+    const medical = filtered.filter(p => { const m=p.medical.toLowerCase(); return m && !['nil','none','no.','no','ni','-','n/a','nill','na',''].includes(m); });
 
-    if (filtered.length === 0) return '';
-
-
-    return `
-      <div class="sport-card">
-
-        <div class="sport-header" onclick="toggleSport(${index})">
-          <span>${sport}</span>
-          <span>${filtered.length} participants</span>
+    return `<div class="sport-card">
+      <div class="sport-header" onclick="toggleSport(${idx})" aria-expanded="false" id="sport-hdr-${idx}">
+        <div class="sport-header-left">
+          <span class="sport-name-text">${escHtml(sportName)}</span>
+          <span class="sport-count-badge">${filtered.length} participant${filtered.length!==1?'s':''}</span>
+          ${medical.length ? `<span class="badge badge-medical"><i class="ti ti-heart-exclamation" style="font-size:11px;vertical-align:-1px" aria-hidden="true"></i> ${medical.length} medical</span>` : ''}
         </div>
-
-        <div class="sport-body" id="sport-body-${index}">
-
-          ${filtered.map(person => `
-            <div class="person-row">
-              <strong>${person.rank} ${person.name}</strong>
-              <br>
-              ${person.unit}
-              <br><br>
-
-              <span class="badge ${person.type.toLowerCase().includes('nsf') ? 'nsf' : 'regular'}">
-                ${person.type}
-              </span>
+        <i class="ti ti-chevron-down sport-chevron" id="sport-chev-${idx}" aria-hidden="true"></i>
+      </div>
+      <div class="sport-body" id="sport-body-${idx}">
+        ${filtered.map(p => {
+          const isNsf = p.type.toLowerCase().includes('nsf');
+          const hasMed = p.medical && !['nil','none','no.','no','ni','-','n/a','nill','na',''].includes(p.medical.toLowerCase());
+          return `<div class="person-row">
+            <div>
+              <div class="person-main">${escHtml(p.rank)} ${escHtml(p.name)}</div>
+              <div class="person-sub">
+                <span>${escHtml(p.unit)}</span>
+                ${p.phone ? `<span class="person-phone"><i class="ti ti-phone" style="font-size:12px" aria-hidden="true"></i>${escHtml(p.phone)}</span>` : ''}
+                ${hasMed ? `<span style="color:#A32D2D;font-size:11px"><i class="ti ti-alert-circle" style="font-size:12px;vertical-align:-1px" aria-hidden="true"></i> ${escHtml(p.medical)}</span>` : ''}
+              </div>
             </div>
-          `).join('')}
-
+            <span class="badge ${isNsf?'badge-nsf':'badge-reg'}">${escHtml(p.type)}</span>
+          </div>`;
+        }).join('')}
+        <div style="padding:10px 16px;display:flex;gap:8px;border-top:0.5px solid var(--border-light)">
+          <button class="btn" onclick="downloadSportRoster(${JSON.stringify(sportName)})"><i class="ti ti-download" aria-hidden="true"></i> Export roster</button>
         </div>
       </div>
-    `;
+    </div>`;
   }).join('');
 }
 
-
-function toggleSport(index) {
-
-  const body = document.getElementById(`sport-body-${index}`);
-
-  if (body.style.display === 'block') {
-    body.style.display = 'none';
-  }
-  else {
-    body.style.display = 'block';
-  }
+function toggleSport(idx) {
+  const body = document.getElementById('sport-body-' + idx);
+  const chev = document.getElementById('sport-chev-' + idx);
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  chev.classList.toggle('open', !isOpen);
 }
 
+/* ═══════════════════════════════════════════════
+   SHARE
+═══════════════════════════════════════════════ */
+function buildShareUrl(sportFilter) {
+  const payload = { data: allData, file: currentFileName };
+  if (sportFilter) payload.sportFilter = sportFilter;
+  try {
+    const json = JSON.stringify(payload);
+    const b64 = btoa(unescape(encodeURIComponent(json)));
+    const url = location.href.split('#')[0].split('?')[0] + '?d=' + encodeURIComponent(b64);
+    return url;
+  } catch(e) { return null; }
+}
 
-function downloadSummary() {
+function openShareModal() {
+  buildShareUrl(); // ensure fresh
+  const url = buildShareUrl();
+  const inp = document.getElementById('shareUrlInput');
+  if (!url) {
+    document.getElementById('shareUrlNote').textContent = 'Dataset too large to encode in a URL. Use the Export CSV instead and share that file.';
+    inp.value = '(data too large)';
+  } else {
+    inp.value = url;
+    const kb = Math.round(encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify({data:allData,file:currentFileName}))))).length / 1024);
+    document.getElementById('shareUrlNote').textContent = `URL size: ~${kb} KB. Works best shared via messaging apps or email. The recipient opens it in any browser — no upload needed.`;
+  }
+  // build convenor list
+  const sorted = Object.entries(groupedSports).sort((a,b)=>b[1].length-a[1].length);
+  document.getElementById('convenorList').innerHTML = sorted.map(([sport, people]) => {
+    const u = buildShareUrl(sport);
+    const safe = JSON.stringify(sport);
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--border-light);gap:8px">
+      <div>
+        <div style="font-size:13px;font-weight:500">${escHtml(sport)}</div>
+        <div style="font-size:11px;color:var(--text-secondary)">${people.length} participant${people.length!==1?'s':''}</div>
+      </div>
+      <button class="btn" onclick="copyConvenorUrl(${safe},this)"><i class="ti ti-copy" aria-hidden="true"></i> Copy link</button>
+    </div>`;
+  }).join('');
+  document.getElementById('shareModal').classList.remove('hidden');
+}
 
-  const rows = [];
+function closeShareModal() { document.getElementById('shareModal').classList.add('hidden'); }
+document.getElementById('shareModal').addEventListener('click', e => { if(e.target===e.currentTarget) closeShareModal(); });
 
-  rows.push(['Sport', 'Participant Count', 'Participants']);
+function switchShareTab(tab, btn) {
+  document.querySelectorAll('.modal-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('shareTabLink').classList.toggle('hidden', tab!=='link');
+  document.getElementById('shareTabConvenor').classList.toggle('hidden', tab!=='convenor');
+}
 
-  Object.entries(groupedSports).forEach(([sport, people]) => {
-
-    rows.push([
-      sport,
-      people.length,
-      people.map(p => `${p.rank} ${p.name}`).join(' | ')
-    ]);
+function copyShareUrl() {
+  navigator.clipboard.writeText(document.getElementById('shareUrlInput').value).then(() => {
+    const btn = event.currentTarget;
+    btn.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Copied';
+    setTimeout(() => { btn.innerHTML = '<i class="ti ti-copy" aria-hidden="true"></i> Copy'; }, 2000);
   });
-
-
-  const csv = rows.map(row =>
-    row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
-  ).join('\n');
-
-
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-
-  const link = document.createElement('a');
-
-  link.href = URL.createObjectURL(blob);
-  link.download = 'sports_summary.csv';
-
-  link.click();
 }
 
+function copyConvenorUrl(sport, btn) {
+  const url = buildShareUrl(sport);
+  if (!url) { alert('Dataset too large to encode.'); return; }
+  navigator.clipboard.writeText(url).then(() => {
+    btn.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Copied';
+    setTimeout(() => { btn.innerHTML = '<i class="ti ti-copy" aria-hidden="true"></i> Copy link'; }, 2000);
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   SHARED LINK LOAD (runs on page open)
+═══════════════════════════════════════════════ */
+function checkSharedLoad() {}  // placeholder called after processRows, no-op
+
+(function initSharedLoad() {
+  const params = new URLSearchParams(location.search);
+  const d = params.get('d');
+  if (!d) return;
+  try {
+    const json = decodeURIComponent(escape(atob(decodeURIComponent(d))));
+    const payload = JSON.parse(json);
+    allData = payload.data || [];
+    currentFileName = payload.file || 'Shared dashboard';
+    buildGrouped();
+    renderDashboard();
+    // apply sport filter if convenor link
+    if (payload.sportFilter) {
+      activeSportFilter = payload.sportFilter;
+      document.querySelectorAll('.sport-filter-tab').forEach(b => {
+        if (b.textContent === payload.sportFilter) b.classList.add('active');
+        else b.classList.remove('active');
+      });
+      const allTab = document.querySelector('.sport-filter-tab');
+      if(allTab) allTab.classList.remove('active');
+      renderSportCards();
+      // update header badge
+      document.querySelector('.header-badge').textContent = payload.sportFilter + ' Convenor View';
+      // hide share & export
+      document.getElementById('dashSub').textContent += ' · Filtered: ' + payload.sportFilter;
+    }
+  } catch(e) {
+    console.warn('Could not load shared data:', e);
+  }
+})();
+
+/* ═══════════════════════════════════════════════
+   EXPORTS
+═══════════════════════════════════════════════ */
+function downloadSummary() {
+  const rows = [['Sport','Count','Participants']];
+  Object.entries(groupedSports).sort((a,b)=>b[1].length-a[1].length).forEach(([s,p]) => {
+    rows.push([s, p.length, p.map(x=>`${x.rank} ${x.name} (${x.unit})`).join(' | ')]);
+  });
+  dlCSV(rows, 'sports_summary.csv');
+}
+
+function downloadSportRoster(sport) {
+  const rows = [['Rank','Name','Unit','Type','Phone','Medical']];
+  (groupedSports[sport]||[]).forEach(p => rows.push([p.rank,p.name,p.unit,p.type,p.phone,p.medical]));
+  dlCSV(rows, sport.replace(/[^a-z0-9]/gi,'_')+'_roster.csv');
+}
+
+function dlCSV(rows, name) {
+  const csv = rows.map(r=>r.map(c=>`"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download = name; a.click();
+}
 
 function resetDashboard() {
-
-  allData = [];
-  groupedSports = {};
-
-  Object.values(charts).forEach(chart => {
-    if (chart) chart.destroy();
-  });
-
-  charts = {};
-
+  allData=[]; groupedSports={};
+  Object.values(charts).forEach(c=>c&&c.destroy()); charts={};
   document.getElementById('dashboard').classList.add('hidden');
   document.getElementById('dropZone').classList.remove('hidden');
+  history.replaceState(null,'',location.pathname);
+}
+
+/* ═══════════════════════════════════════════════
+   UTILS
+═══════════════════════════════════════════════ */
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 </script>
-
 </body>
 </html>
