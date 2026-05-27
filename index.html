@@ -1,1052 +1,731 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Roll Call</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>4th Division — Sports Interest Dashboard</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
 :root {
-  --bg:            #0c0e14;
-  --surface:       #13161f;
-  --surface2:      #191d28;
-  --surface3:      #1f2436;
-  --border:        rgba(255,255,255,0.06);
-  --border2:       rgba(255,255,255,0.11);
-  --border3:       rgba(255,255,255,0.18);
-  --text:          #dde1ed;
-  --text2:         #7a829c;
-  --text3:         #424b62;
-  --day:           #f5a623;
-  --day-bg:        rgba(245,166,35,0.10);
-  --day-glow:      rgba(245,166,35,0.20);
-  --night:         #818cf8;
-  --night-bg:      rgba(129,140,248,0.10);
-  --night-glow:    rgba(129,140,248,0.20);
-  --green:         #34d399;
-  --green-bg:      rgba(52,211,153,0.10);
-  --red:           #f87171;
-  --red-bg:        rgba(248,113,113,0.10);
-  --radius:        10px;
-  --radius-lg:     16px;
-  --radius-xl:     20px;
-  --mono:          'IBM Plex Mono', monospace;
-  --sans:          'IBM Plex Sans', sans-serif;
-  --shadow:        0 4px 24px rgba(0,0,0,0.4);
-  --shadow-lg:     0 8px 48px rgba(0,0,0,0.6);
+  --bg-primary:#ffffff;
+  --bg-secondary:#f5f4f1;
+  --bg-tertiary:#eeedea;
+  --text-primary:#1a1a1a;
+  --text-secondary:#6b6a66;
+  --border-light:rgba(0,0,0,0.09);
+  --border-med:rgba(0,0,0,0.16);
+  --radius-md:8px;
+  --radius-lg:12px;
+  --radius-xl:16px;
+  --blue:#378ADD;
+  --teal:#1D9E75;
+  --purple:#7F77DD;
+  --coral:#D85A30;
+  --pink:#D4537E;
+  --amber:#BA7517;
+  --green-bg:#EAF3DE;--green-text:#3B6D11;
+  --blue-bg:#E6F1FB;--blue-text:#185FA5;
+  --red-bg:#FCEBEB;--red-text:#A32D2D;
+  --amber-bg:#FAEEDA;--amber-text:#854F0B;
 }
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg-primary:#1c1c1a;--bg-secondary:#252523;--bg-tertiary:#2e2e2b;
+    --text-primary:#f0efe9;--text-secondary:#9a9990;
+    --border-light:rgba(255,255,255,0.08);--border-med:rgba(255,255,255,0.15);
+    --green-bg:#27500A;--green-text:#C0DD97;
+    --blue-bg:#0C447C;--blue-text:#B5D4F4;
+    --red-bg:#501313;--red-text:#F7C1C1;
+    --amber-bg:#633806;--amber-text:#FAC775;
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;color:var(--text-primary);background:var(--bg-tertiary);min-height:100vh;padding:2rem 1rem;font-size:15px;line-height:1.6}
+.container{max-width:1080px;margin:0 auto}
+.hidden{display:none!important}
 
-html { height: 100%; }
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--sans);
-  min-height: 100%;
-  /* subtle grid pattern for depth */
-  background-image:
-    linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
-  background-size: 32px 32px;
-}
+/* ── Header ── */
+.site-header{margin-bottom:2rem;display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap}
+.site-header h1{font-size:22px;font-weight:500;letter-spacing:-0.01em}
+.site-header p{font-size:13px;color:var(--text-secondary);margin-top:3px}
 
-/* ── TOPBAR ─────────────────────────────────────────────── */
-.topbar {
-  position: sticky; top: 0; z-index: 50;
-  background: rgba(19,22,31,0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--border);
-  padding: 0 20px;
-  height: 52px;
-  display: flex; align-items: center; gap: 12px;
-}
-.topbar-logo {
-  width: 28px; height: 28px; border-radius: 8px;
-  background: linear-gradient(135deg, var(--day) 0%, #e8670a 100%);
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--mono); font-size: 12px; font-weight: 600;
-  color: #000; flex-shrink: 0; box-shadow: 0 2px 8px var(--day-glow);
-}
-.topbar-title {
-  font-family: var(--mono); font-size: 12px; font-weight: 600;
-  letter-spacing: 0.08em; color: var(--text); text-transform: uppercase;
-}
-.topbar-divider { width: 1px; height: 18px; background: var(--border2); flex-shrink: 0; }
-.topbar-date-str {
-  font-family: var(--mono); font-size: 11px; color: var(--text2);
-  letter-spacing: 0.02em;
-}
-.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-.topbar-clock {
-  font-family: var(--mono); font-size: 13px; font-weight: 500;
-  color: var(--text); letter-spacing: 0.06em;
-  background: var(--surface2); border: 1px solid var(--border2);
-  padding: 4px 10px; border-radius: 8px;
-}
 
-/* ── PAGE LAYOUT ────────────────────────────────────────── */
-.page { max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; }
+/* ── Drop zone ── */
+.drop-zone{background:var(--bg-primary);border:1.5px dashed var(--border-med);border-radius:var(--radius-xl);padding:3.5rem 2rem;text-align:center;cursor:pointer;transition:background .15s,border-color .15s;margin-bottom:1.25rem}
+.drop-zone:hover,.drop-zone.over{background:var(--bg-secondary);border-color:var(--blue)}
+.drop-zone .dz-icon{font-size:32px;color:var(--text-secondary);margin-bottom:12px;display:block}
+.drop-zone h3{font-size:16px;font-weight:500;margin-bottom:5px}
+.drop-zone p{font-size:13px;color:var(--text-secondary)}
 
-/* ── DASHBOARD HEADER ───────────────────────────────────── */
-/* ── SHIFT BANNER (merged) ──────────────────────────────── */
-.shift-banner {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 0;
-  margin-bottom: 16px;
-  background: var(--surface);
-  border: 1px solid var(--border2);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  position: relative;
-}
-.shift-banner::before {
-  content: '';
-  position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, var(--night) 0%, var(--night) 50%, var(--day) 50%, var(--day) 100%);
-}
-.banner-half {
-  padding: 16px 20px;
-}
-.banner-current { text-align: left; }
-.banner-incoming { text-align: right; }
-.banner-eyebrow {
-  font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em;
-  text-transform: uppercase; margin-bottom: 6px;
-}
-.banner-current .banner-eyebrow { color: var(--night); }
-.banner-incoming .banner-eyebrow { color: var(--day); }
-.banner-incoming-night .banner-eyebrow { color: var(--night); }
-.banner-rota {
-  font-family: var(--mono); font-size: 15px; font-weight: 600; color: var(--text);
-}
-.banner-divider {
-  display: flex; flex-direction: column; align-items: center;
-  padding: 14px 18px;
-  border-left: 1px solid var(--border);
-  border-right: 1px solid var(--border);
-  background: var(--surface2);
-  min-width: 110px;
-}
-.banner-countdown-label {
-  font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em;
-  text-transform: uppercase; color: var(--text3); margin-bottom: 4px;
-}
-.banner-countdown {
-  font-family: var(--mono); font-size: 20px; font-weight: 600; color: var(--text);
-  letter-spacing: 0.04em;
-}
-@media (max-width: 500px) {
-  .shift-banner { grid-template-columns: 1fr; }
-  .banner-half { padding: 12px 16px; }
-  .banner-current { border-bottom: 1px solid var(--border); }
-  .banner-divider { border: none; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); flex-direction: row; gap: 10px; padding: 10px 16px; }
-  .banner-incoming { text-align: left; }
-  .banner-incoming .banner-eyebrow { color: var(--day); }
-}
+/* ── Paste panel ── */
+.paste-panel{background:var(--bg-primary);border:0.5px solid var(--border-light);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:1.25rem}
+.paste-panel summary{font-size:13px;font-weight:500;color:var(--text-secondary);cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px}
+.paste-panel summary::after{content:'\203A';font-size:16px;transition:transform .2s}
+details[open] .paste-panel summary::after{transform:rotate(90deg)}
+.paste-panel textarea{width:100%;height:140px;margin-top:12px;padding:10px;border:0.5px solid var(--border-med);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-family:monospace;font-size:12px;resize:vertical}
+.paste-panel textarea:focus{outline:none;border-color:var(--blue)}
 
-/* ── MAIN GRID ──────────────────────────────────────────── */
-.main-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  align-items: start;
-}
-@media (max-width: 700px) { .main-grid { grid-template-columns: 1fr; } }
+/* ── Buttons ── */
+.btn{font-size:12px;padding:6px 14px;border:0.5px solid var(--border-med);border-radius:var(--radius-md);cursor:pointer;background:var(--bg-primary);color:var(--text-primary);display:inline-flex;align-items:center;gap:6px;transition:background .12s;white-space:nowrap;text-decoration:none}
+.btn:hover{background:var(--bg-secondary)}
+.btn-primary{background:var(--text-primary);color:var(--bg-primary);border-color:transparent}
+.btn-primary:hover{opacity:.85;background:var(--text-primary)}
+.btn-group{display:flex;gap:8px;flex-wrap:wrap}
 
-/* ── WIDGET ─────────────────────────────────────────────── */
-.widget {
-  background: var(--surface);
-  border: 1px solid var(--border2);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-.widget-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface2);
-}
-.widget-title {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
-  text-transform: uppercase; color: var(--text2); font-weight: 500;
-}
-.widget-badge {
-  font-family: var(--mono); font-size: 10px; padding: 2px 8px;
-  border-radius: 20px; font-weight: 500; letter-spacing: 0.04em;
-}
-.badge-day   { background: var(--day-bg);   color: var(--day);   border: 1px solid rgba(245,166,35,0.3); }
-.badge-night { background: var(--night-bg); color: var(--night); border: 1px solid rgba(129,140,248,0.3); }
-.badge-override { background: var(--red-bg); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
-.badge-ok    { background: var(--green-bg); color: var(--green); border: 1px solid rgba(52,211,153,0.3); }
-.badge-err   { background: var(--red-bg);   color: var(--red);   border: 1px solid rgba(248,113,113,0.3); }
+/* ── Cards ── */
+.card{background:var(--bg-primary);border:0.5px solid var(--border-light);border-radius:var(--radius-lg);padding:1.1rem 1.25rem;margin-bottom:12px}
 
-.widget-body { padding: 14px 16px; }
+/* ── Metrics ── */
+.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+@media(max-width:640px){.metric-grid{grid-template-columns:repeat(2,1fr)}}
+.metric{background:var(--bg-secondary);border-radius:var(--radius-md);padding:14px 16px}
+.metric .label{font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.metric .value{font-size:26px;font-weight:500}
 
-/* ── CONTROLS ───────────────────────────────────────────── */
-.ctrl-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
-.ctrl-label { font-family: var(--mono); font-size: 10px; color: var(--text3); letter-spacing: 0.06em; text-transform: uppercase; min-width: 80px; }
+/* ── Section title ── */
+.section-title{font-size:11px;font-weight:500;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
 
-input[type="date"] {
-  background: var(--surface2); border: 1px solid var(--border2);
-  border-radius: var(--radius); color: var(--text);
-  font-family: var(--mono); font-size: 12px; padding: 6px 10px;
-  outline: none; transition: border-color 0.15s; color-scheme: dark;
-}
-input[type="date"]:focus { border-color: var(--border3); }
+/* ── Two col layout ── */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){.two-col{grid-template-columns:1fr}}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+@media(max-width:780px){.three-col{grid-template-columns:1fr 1fr}}
+@media(max-width:500px){.three-col{grid-template-columns:1fr}}
 
-.pill-group { display: flex; gap: 6px; flex-wrap: wrap; }
-.pill {
-  padding: 5px 12px; border: 1px solid var(--border2); border-radius: 20px;
-  background: transparent; color: var(--text2); font-family: var(--mono);
-  font-size: 11px; cursor: pointer; transition: all 0.15s; letter-spacing: 0.02em;
-  -webkit-user-select: none; user-select: none;
-  -webkit-tap-highlight-color: transparent;
-}
-.pill:hover { border-color: var(--border3); color: var(--text); }
-.pill.p-day     { background: var(--day-bg);   border-color: rgba(245,166,35,0.4);   color: var(--day); }
-.pill.p-night   { background: var(--night-bg); border-color: rgba(129,140,248,0.4);  color: var(--night); }
-.pill.p-neutral { background: var(--surface3); border-color: var(--border2); color: var(--text); }
+/* ── Chart wrappers ── */
+.chart-wrap{position:relative;width:100%}
 
-.divider { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+/* ── Warning ── */
+.warning-box{background:var(--amber-bg);color:var(--amber-text);font-size:13px;padding:10px 14px;border-radius:var(--radius-md);margin-bottom:10px;display:flex;align-items:center;gap:8px}
 
-/* ── ROSTER STATUS ──────────────────────────────────────── */
-.roster-meta {
-  display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
-  font-family: var(--mono); font-size: 10px; color: var(--text3);
-}
-.rdot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--green); }
-.rdot.loading { background: var(--day); animation: blink 1s infinite; }
-.rdot.error { background: var(--red); }
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+/* ── Sport cards (expandable) ── */
+.sport-card{border:0.5px solid var(--border-light);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:8px;background:var(--bg-primary)}
+.sport-header{padding:12px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;transition:background .12s}
+.sport-header:hover{background:var(--bg-secondary)}
+.sport-header-left{display:flex;align-items:center;gap:10px}
+.sport-name-text{font-size:14px;font-weight:500}
+.sport-count-badge{font-size:11px;padding:2px 8px;border-radius:10px;background:var(--bg-secondary);color:var(--text-secondary);border:0.5px solid var(--border-light)}
+.sport-chevron{font-size:16px;color:var(--text-secondary);transition:transform .2s}
+.sport-chevron.open{transform:rotate(180deg)}
+.sport-body{border-top:0.5px solid var(--border-light);display:none}
+.sport-body.open{display:block}
+.person-row{padding:10px 16px;border-bottom:0.5px solid var(--border-light);display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+.person-row:last-child{border-bottom:none}
+.person-main{font-size:13px;font-weight:500}
+.person-sub{font-size:12px;color:var(--text-secondary);margin-top:2px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.person-phone{display:inline-flex;align-items:center;gap:4px;color:var(--text-secondary)}
 
-/* ── PERSON BLOCKS ──────────────────────────────────────── */
-.person-block {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  margin-bottom: 6px;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-.person-block:last-child { margin-bottom: 0; }
-.person-block.focused {
-  border-color: var(--border3);
-  box-shadow: 0 0 0 2px rgba(129,140,248,0.08);
-}
-.person-top { display: flex; align-items: center; gap: 10px; padding: 9px 12px; }
-.person-rank {
-  font-family: var(--mono); font-size: 9px; color: var(--text3);
-  width: 14px; text-align: right; flex-shrink: 0;
-}
-.person-name {
-  font-family: var(--mono); font-size: 12px; font-weight: 600;
-  color: var(--text); min-width: 100px; flex-shrink: 0; letter-spacing: 0.02em;
-  -webkit-user-select: none; user-select: none;
-}
-.status-wrap { flex: 1; min-width: 0; }
-.status-input {
-  width: 100%; background: transparent; border: none; outline: none;
-  color: var(--text2); font-family: var(--mono); font-size: 12px; padding: 0;
-}
-.status-input::placeholder { color: var(--text3); }
+/* ── Badges ── */
+.badge{font-size:11px;padding:2px 9px;border-radius:10px;font-weight:500;white-space:nowrap}
+.badge-nsf{background:var(--blue-bg);color:var(--blue-text)}
+.badge-reg{background:var(--green-bg);color:var(--green-text)}
+.badge-medical{background:var(--red-bg);color:var(--red-text)}
 
-.chips-row {
-  display: none; flex-wrap: wrap; gap: 4px;
-  padding: 6px 12px 8px 36px;
-  border-top: 1px solid var(--border);
-  background: rgba(0,0,0,0.15);
-}
-.person-block.focused .chips-row { display: flex; }
-.chip {
-  padding: 3px 9px; border-radius: 20px;
-  border: 1px solid var(--border2);
-  background: var(--surface); color: var(--text2);
-  font-family: var(--mono); font-size: 10px;
-  cursor: pointer; transition: all 0.12s; white-space: nowrap;
-  letter-spacing: 0.02em;
-  -webkit-user-select: none; user-select: none;
-  -webkit-tap-highlight-color: transparent;
-}
-.chip:hover { border-color: var(--border3); color: var(--text); background: var(--surface3); }
-.chip.chip-on  { border-color: rgba(52,211,153,0.35); color: var(--green); }
-.chip.chip-on:hover { background: var(--green-bg); }
-.chip.chip-off { border-color: rgba(248,113,113,0.35); color: var(--red); }
-.chip.chip-off:hover { background: var(--red-bg); }
+/* ── Search row ── */
+.search-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.search-row input,.search-row select{font-size:13px;padding:7px 10px;border:0.5px solid var(--border-light);border-radius:var(--radius-md);background:var(--bg-primary);color:var(--text-primary);flex:1;min-width:140px}
+.search-row input:focus,.search-row select:focus{outline:none;border-color:var(--blue)}
 
-/* ── PREVIEW ────────────────────────────────────────────── */
-.preview-box {
-  font-family: var(--mono); font-size: 12px; color: var(--text);
-  white-space: pre; line-height: 1.9;
-  padding: 16px;
-  overflow: auto;
-  background: var(--surface2);
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  min-height: 180px;
-  width: 100%;
-  resize: none;
-  cursor: text;
-  -webkit-user-select: text;
-  user-select: text;
-}
+/* ── Summary box ── */
+.summary-box{background:var(--bg-secondary);border-radius:var(--radius-md);padding:14px;font-size:13px;line-height:1.8;color:var(--text-secondary)}
+.summary-box strong{color:var(--text-primary)}
 
-/* ── COPY BUTTON ────────────────────────────────────────── */
-.copy-btn {
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  width: 100%; padding: 16px;
-  border-radius: var(--radius-lg);
-  border: none;
-  background: linear-gradient(135deg, #f5a623 0%, #e8670a 100%);
-  color: #000;
-  font-family: var(--mono); font-size: 14px; font-weight: 600;
-  cursor: pointer; letter-spacing: 0.06em;
-  transition: all 0.2s;
-  box-shadow: 0 4px 20px rgba(245,166,35,0.3);
-  text-transform: uppercase;
-  margin-top: 12px;
-}
-.copy-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 28px rgba(245,166,35,0.45);
-}
-.copy-btn:active { transform: translateY(0); box-shadow: 0 2px 12px rgba(245,166,35,0.3); }
-.copy-btn.success {
-  background: linear-gradient(135deg, var(--green) 0%, #059669 100%);
-  box-shadow: 0 4px 20px rgba(52,211,153,0.35);
-  color: #000;
-}
+/* ── Action row ── */
+.action-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem;flex-wrap:wrap;gap:10px}
+.action-title{font-size:18px;font-weight:500}
+.action-sub{font-size:12px;color:var(--text-secondary);margin-top:3px}
 
-/* ── GOOGLE SHEETS EMBED ────────────────────────────────── */
-.sheets-embed-wrap {
-  width: 100%; border-radius: var(--radius); overflow: hidden;
-  border: 1px solid var(--border2);
-  background: var(--surface2);
-}
-.sheets-embed-wrap iframe {
-  width: 100%; height: 320px; border: none; display: block;
-  border-radius: var(--radius);
-}
-.sheets-placeholder {
-  height: 140px; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 8px;
-  color: var(--text3); font-family: var(--mono); font-size: 11px; text-align: center;
-}
-.sheets-placeholder a { color: var(--night); text-decoration: none; }
-.sheets-placeholder a:hover { text-decoration: underline; }
-
-/* ── CONFIG ─────────────────────────────────────────────── */
-.config-toggle {
-  display: flex; align-items: center; gap: 6px;
-  background: none; border: none; cursor: pointer;
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em;
-  color: var(--text3); padding: 0; transition: color 0.15s; text-transform: uppercase;
-}
-.config-toggle:hover { color: var(--text2); }
-.config-slide {
-  max-height: 0; overflow: hidden; transition: max-height 0.3s ease;
-}
-.config-slide.open { max-height: 600px; }
-.config-inner { padding-top: 12px; }
-.cfg-label {
-  font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em;
-  text-transform: uppercase; color: var(--text3); margin-bottom: 6px;
-}
-.cfg-row { display: flex; gap: 8px; align-items: center; }
-.cfg-row input[type="text"] {
-  flex: 1; background: var(--surface2); border: 1px solid var(--border2);
-  border-radius: var(--radius); color: var(--text);
-  font-family: var(--mono); font-size: 12px; padding: 7px 10px; outline: none;
-  transition: border-color 0.15s;
-}
-.cfg-row input[type="text"]:focus { border-color: var(--border3); }
-.cfg-save {
-  padding: 7px 14px; background: var(--green-bg);
-  border: 1px solid rgba(52,211,153,0.4);
-  border-radius: var(--radius); color: var(--green);
-  font-family: var(--mono); font-size: 11px; cursor: pointer;
-  white-space: nowrap; transition: all 0.15s;
-}
-.cfg-save:hover { background: rgba(52,211,153,0.18); }
-.cfg-hint {
-  margin-top: 10px; padding: 10px 12px;
-  background: rgba(0,0,0,0.25); border-radius: var(--radius);
-  border: 1px solid var(--border);
-  font-family: var(--mono); font-size: 10px; color: var(--text3); line-height: 1.9;
-}
-.cfg-hint strong { color: var(--text2); }
-.cfg-hint code { color: var(--day); }
-
-/* ── DATE PICKER ────────────────────────────────────────── */
-.dp-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 200; backdrop-filter: blur(4px);
-}
-.dp-modal {
-  background: var(--surface); border: 1px solid var(--border2);
-  border-radius: var(--radius-xl); padding: 20px; width: 310px;
-  box-shadow: var(--shadow-lg);
-}
-.dp-header {
-  display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
-}
-.dp-title { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text); }
-.dp-nav {
-  background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px;
-  color: var(--text2); font-size: 14px; width: 30px; height: 30px;
-  cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s;
-}
-.dp-nav:hover { color: var(--text); border-color: var(--border3); }
-.dp-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; margin-bottom: 12px; }
-.dp-dow { font-family: var(--mono); font-size: 9px; color: var(--text3); text-align: center; padding: 4px 0; letter-spacing: 0.06em; }
-.dp-day {
-  font-family: var(--mono); font-size: 12px; text-align: center;
-  padding: 7px 2px; border-radius: 8px; cursor: pointer;
-  border: 1px solid transparent; transition: all 0.12s; color: var(--text2); background: none;
-}
-.dp-day:hover { background: var(--surface3); color: var(--text); }
-.dp-day.empty { cursor: default; pointer-events: none; }
-.dp-day.today { border-color: rgba(245,166,35,0.45); color: var(--day); font-weight: 600; }
-.dp-day.today::after { /* dot under today */
-  content: ''; display: block; width: 3px; height: 3px; border-radius: 50%;
-  background: var(--day); margin: 1px auto 0;
-}
-.dp-day.selected { background: var(--night-bg); border-color: rgba(129,140,248,0.5); color: var(--night); font-weight: 600; }
-.dp-day.today.selected { background: var(--day-bg); border-color: rgba(245,166,35,0.5); color: var(--day); }
-.dp-day.in-range { background: rgba(129,140,248,0.06); color: var(--text); }
-.dp-day.range-end { background: var(--night-bg); border-color: rgba(129,140,248,0.5); color: var(--night); font-weight: 600; }
-.dp-hint { font-family: var(--mono); font-size: 11px; color: var(--text2); text-align: center; margin-bottom: 14px; min-height: 16px; }
-.dp-actions { display: flex; gap: 8px; justify-content: flex-end; }
-.dp-cancel {
-  background: none; border: 1px solid var(--border2); border-radius: var(--radius);
-  color: var(--text2); font-family: var(--mono); font-size: 11px; padding: 6px 14px; cursor: pointer;
-}
-.dp-cancel:hover { border-color: var(--border3); color: var(--text); }
-.dp-confirm {
-  background: var(--green-bg); border: 1px solid rgba(52,211,153,0.4);
-  border-radius: var(--radius); color: var(--green);
-  font-family: var(--mono); font-size: 11px; padding: 6px 14px; cursor: pointer;
-  transition: all 0.15s;
-}
-.dp-confirm:hover { background: rgba(52,211,153,0.18); }
-.dp-confirm:disabled { opacity: 0.3; cursor: default; }
-
-/* ── MOBILE ─────────────────────────────────────────────── */
-@media (max-width: 480px) {
-  .topbar { padding: 0 14px; }
-  .topbar-date-str { display: none; }
-  .page { padding: 14px 12px 32px; }
-  .widget-body { padding: 12px; }
-  .copy-btn { font-size: 13px; padding: 15px; }
-  .dp-modal { width: calc(100vw - 32px); }
-  /* prevent keyboard resize from shifting layout */
-  .main-grid { gap: 10px; }
-}
+/* ── Share modal ── */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:100;padding:1rem}
+.modal{background:var(--bg-primary);border-radius:var(--radius-xl);padding:1.5rem;max-width:560px;width:100%;border:0.5px solid var(--border-med)}
+.modal h3{font-size:16px;font-weight:500;margin-bottom:6px}
+.modal p{font-size:13px;color:var(--text-secondary);margin-bottom:14px;line-height:1.6}
+.modal-tabs{display:flex;gap:4px;margin-bottom:1rem}
+.modal-tab{font-size:12px;padding:5px 14px;border:0.5px solid var(--border-light);border-radius:20px;cursor:pointer;background:transparent;color:var(--text-secondary)}
+.modal-tab.active{background:var(--text-primary);color:var(--bg-primary);border-color:transparent}
+.share-url-box{display:flex;gap:8px;margin-bottom:10px}
+.share-url-box input{flex:1;font-size:12px;padding:8px 10px;border:0.5px solid var(--border-med);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-secondary);font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.share-note{font-size:11px;color:var(--text-secondary);line-height:1.6}
+.sport-filter-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.sport-filter-tab{font-size:12px;padding:4px 12px;border:0.5px solid var(--border-light);border-radius:20px;cursor:pointer;background:transparent;color:var(--text-secondary);transition:all .12s}
+.sport-filter-tab.active{background:var(--text-primary);color:var(--bg-primary);border-color:transparent}
+.progress-bar-bg{height:5px;background:var(--bg-secondary);border-radius:3px;overflow:hidden;flex:1}
+.progress-bar{height:100%;border-radius:3px;transition:width .4s}
 </style>
 </head>
 <body>
+<div class="container">
 
-<!-- TOPBAR -->
-<div class="topbar">
-  <div class="topbar-logo">RC</div>
-  <span class="topbar-title">Roll Call</span>
-  <div class="topbar-divider"></div>
-  <span class="topbar-date-str" id="topbar-date"></span>
-  <div class="topbar-right">
-    <div class="topbar-clock" id="topbar-clock">00:00:00</div>
+  <!-- Header -->
+  <div class="site-header">
+    <div>
+      <h1>Sports Interest Dashboard</h1>
+      <p>4th Division, SCDF</p>
+    </div>
+  </div>
+
+  <!-- Upload zone -->
+  <div id="dropZone" class="drop-zone">
+    <i class="ti ti-upload dz-icon" aria-hidden="true"></i>
+    <h3>Drop CSV or XLSX here</h3>
+    <p>or click to select your form export</p>
+    <input type="file" id="fileInput" accept=".csv,.xlsx" hidden>
+  </div>
+
+  <!-- Paste fallback -->
+  <details style="margin-bottom:1.25rem">
+    <div class="paste-panel">
+      <summary><i class="ti ti-clipboard" style="font-size:14px" aria-hidden="true"></i> Or paste from Excel</summary>
+      <textarea id="pasteArea" placeholder="Copy rows from Excel and paste here (Tab-separated)…"></textarea>
+      <div style="margin-top:10px">
+        <button class="btn btn-primary" onclick="processPastedData()"><i class="ti ti-bolt" aria-hidden="true"></i> Generate from paste</button>
+      </div>
+    </div>
+  </details>
+
+  <!-- Dashboard -->
+  <div id="dashboard" class="hidden">
+
+    <div class="action-row">
+      <div>
+        <div class="action-title" id="dashTitle">Dashboard</div>
+        <div class="action-sub" id="dashSub"></div>
+      </div>
+      <div class="btn-group">
+        <button class="btn" onclick="openShareModal()"><i class="ti ti-share" aria-hidden="true"></i> Share dashboard</button>
+        <button class="btn" onclick="downloadSummary()"><i class="ti ti-download" aria-hidden="true"></i> Export CSV</button>
+        <button class="btn" onclick="resetDashboard()"><i class="ti ti-refresh" aria-hidden="true"></i> New file</button>
+      </div>
+    </div>
+
+    <!-- Warnings -->
+    <div id="warnings"></div>
+
+    <!-- Metrics -->
+    <div class="metric-grid">
+      <div class="metric"><div class="label">Respondents</div><div class="value" id="mTotal">0</div></div>
+      <div class="metric"><div class="label">Sports</div><div class="value" id="mSports">0</div></div>
+      <div class="metric"><div class="label">NSF</div><div class="value" id="mNsf">0</div></div>
+      <div class="metric"><div class="label">Regular</div><div class="value" id="mReg">0</div></div>
+    </div>
+
+    <!-- Charts row -->
+    <div class="three-col" style="margin-bottom:12px">
+      <div class="card">
+        <div class="section-title">Gender split</div>
+        <div class="chart-wrap" style="height:180px"><canvas id="genderChart" role="img" aria-label="Doughnut chart showing gender breakdown">Gender breakdown.</canvas></div>
+      </div>
+      <div class="card">
+        <div class="section-title">By unit</div>
+        <div class="chart-wrap" style="height:180px"><canvas id="unitChart" role="img" aria-label="Bar chart of respondents per unit">Unit breakdown.</canvas></div>
+      </div>
+      <div class="card">
+        <div class="section-title">Sports per person</div>
+        <div class="chart-wrap" style="height:180px"><canvas id="distChart" role="img" aria-label="Histogram of how many sports each person selected">Sports-per-person distribution.</canvas></div>
+      </div>
+    </div>
+
+    <!-- Sports popularity chart -->
+    <div class="card" style="margin-bottom:12px">
+      <div class="section-title">Sports popularity</div>
+      <div class="chart-wrap" style="height:240px"><canvas id="sportsChart" role="img" aria-label="Horizontal bar chart of sport interest counts">Sports by number of interested participants.</canvas></div>
+    </div>
+
+    <!-- Summary insights -->
+    <div class="card" style="margin-bottom:12px">
+      <div class="section-title">Summary insights</div>
+      <div class="summary-box" id="summaryInsights"></div>
+    </div>
+
+    <!-- Sport → participants -->
+    <div class="card">
+      <div class="section-title" style="margin-bottom:10px">Sport → participants</div>
+
+      <div class="search-row">
+        <input type="text" id="searchInput" placeholder="Search by name, unit, or sport…" oninput="renderSportCards()">
+        <select id="typeFilter" onchange="renderSportCards()">
+          <option value="all">All types</option>
+          <option value="nsf">NSF only</option>
+          <option value="regular">Regular only</option>
+        </select>
+        <select id="unitFilter" onchange="renderSportCards()">
+          <option value="all">All units</option>
+        </select>
+      </div>
+
+      <div class="sport-filter-tabs" id="sportFilterTabs"></div>
+
+      <div id="sportCards"></div>
+    </div>
+
+  </div><!-- /dashboard -->
+</div><!-- /container -->
+
+<!-- Share modal -->
+<div class="modal-backdrop hidden" id="shareModal">
+  <div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3><i class="ti ti-share" style="font-size:16px;vertical-align:-2px;margin-right:6px" aria-hidden="true"></i>Share dashboard</h3>
+      <button class="btn" onclick="closeShareModal()" style="padding:4px 10px"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>
+
+    <div class="modal-tabs">
+      <button class="modal-tab active" onclick="switchShareTab('link',this)">Share link</button>
+      <button class="modal-tab" onclick="switchShareTab('bysport',this)">By sport</button>
+    </div>
+
+    <!-- Link tab -->
+    <div id="shareTabLink">
+      <p>Copy this link to open a read-only view of the current dashboard. (No need to upload data, it is encoded directly in the URL.)</p>
+      <div class="share-url-box">
+        <input type="text" id="shareUrlInput" readonly>
+        <button class="btn btn-primary" onclick="copyShareUrl()"><i class="ti ti-copy" aria-hidden="true"></i> Copy</button>
+      </div>
+      <div class="share-note" id="shareUrlNote"></div>
+    </div>
+
+    <!-- Per-sport tab -->
+    <div id="shareTabConvenor" class="hidden">
+      <p>Generate a filtered link per sport, link will automatically filter for the sport at the bottom.</p>
+      <div id="convenorList" style="max-height:320px;overflow-y:auto"></div>
+    </div>
   </div>
 </div>
 
-<div class="page">
-
-  <!-- DASHBOARD SHIFT BANNER -->
-  <div class="shift-banner" id="shift-banner">
-    <div class="banner-half banner-current">
-      <div class="banner-eyebrow">Currently on shift</div>
-      <div class="banner-rota" id="card-current-rota">—</div>
-    </div>
-    <div class="banner-divider">
-      <div class="banner-countdown-label" id="banner-countdown-label">ends in</div>
-      <div class="banner-countdown" id="banner-countdown">00:00:00</div>
-    </div>
-    <div class="banner-half banner-incoming">
-      <div class="banner-eyebrow" id="card-incoming-eyebrow">Incoming shift</div>
-      <div class="banner-rota" id="card-incoming-rota">—</div>
-    </div>
-  </div>
-
-  <!-- MAIN GRID -->
-  <div class="main-grid">
-
-    <!-- LEFT COLUMN -->
-    <div style="display:flex;flex-direction:column;gap:12px;">
-
-      <!-- CONTROLS WIDGET -->
-      <div class="widget">
-        <div class="widget-header">
-          <span class="widget-title">Shift Controls</span>
-          <span class="widget-badge badge-day" id="ctrl-badge">AUTO</span>
-        </div>
-        <div class="widget-body">
-          <div class="ctrl-row">
-            <span class="ctrl-label">Date</span>
-            <input type="date" id="date-input" onchange="onDateChange()">
-          </div>
-          <div class="ctrl-row">
-            <span class="ctrl-label">Rota</span>
-            <div class="pill-group">
-              <button class="pill" id="pill-R1" onclick="setRotaOverride('R1')">Rota 1</button>
-              <button class="pill" id="pill-R2" onclick="setRotaOverride('R2')">Rota 2</button>
-              <button class="pill" id="pill-R3" onclick="setRotaOverride('R3')">Rota 3</button>
-            </div>
-          </div>
-          <div class="ctrl-row">
-            <span class="ctrl-label">Shift</span>
-            <div class="pill-group">
-              <button class="pill" id="pill-Day"   onclick="setShiftOverride('Day')">Day</button>
-              <button class="pill" id="pill-Night" onclick="setShiftOverride('Night')">Night</button>
-              <button class="pill p-neutral" id="pill-auto" onclick="setShiftOverride('auto')">Auto</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- PERSONNEL WIDGET -->
-      <div class="widget">
-        <div class="widget-header">
-          <span class="widget-title">Personnel — <span id="rota-label">—</span></span>
-          <span class="widget-badge badge-ok" id="roster-badge" style="display:none">loaded</span>
-        </div>
-        <div class="widget-body">
-          <div class="roster-meta">
-            <div class="rdot loading" id="roster-dot"></div>
-            <span id="roster-status-text">loading...</span>
-          </div>
-          <div id="person-list"></div>
-        </div>
-      </div>
-
-      <!-- ROSTER SHEET WIDGET (collapsed by default) -->
-      <div class="widget">
-        <div class="widget-header" style="cursor:pointer;" onclick="toggleRosterPanel()">
-          <span class="widget-title">Roster Sheet</span>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <button class="config-toggle" onclick="event.stopPropagation();toggleConfig()" style="pointer-events:auto;">
-              ⚙ <span id="cfg-toggle-text">configure</span>
-            </button>
-            <span id="roster-chevron" style="font-family:var(--mono);font-size:12px;color:var(--text3);transition:transform 0.2s;">▸</span>
-          </div>
-        </div>
-        <div class="config-slide" id="roster-panel">
-          <div style="padding:0 16px;">
-            <div class="config-slide" id="config-slide">
-              <div class="config-inner">
-                <div class="cfg-label">Google Sheet ID</div>
-                <div class="cfg-row">
-                  <input type="text" id="sheet-id-input" placeholder="paste Sheet ID here">
-                  <button class="cfg-save" onclick="saveSheetId()">Save</button>
-                </div>
-                <div class="cfg-hint">
-                  <strong>Column A</strong> = Rota (1, 2 or 3) &nbsp;·&nbsp; <strong>Column B</strong> = Name<br>
-                  Share → <strong>Anyone with link → Viewer</strong><br>
-                  File → Share → <strong>Publish to web → Roster → CSV</strong><br>
-                  Sheet ID is the part of the URL between <code>/d/</code> and <code>/edit</code>
-                </div>
-                <div class="divider"></div>
-              </div>
-            </div>
-            <div class="sheets-embed-wrap" id="sheets-embed-wrap" style="margin-bottom:14px;">
-              <div class="sheets-placeholder" id="sheets-placeholder">
-                <span>Configure a Sheet ID above to<br>view and edit your roster here</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- RIGHT COLUMN -->
-    <div style="display:flex;flex-direction:column;gap:12px;">
-
-      <!-- PREVIEW WIDGET -->
-      <div class="widget">
-        <div class="widget-header">
-          <span class="widget-title">Message Preview</span>
-        </div>
-        <div class="widget-body">
-          <textarea class="preview-box" id="preview" readonly spellcheck="false">Loading...</textarea>
-          <button class="copy-btn" id="copy-btn" onclick="copyMessage()">
-            ✦ &nbsp;Copy to Clipboard
-          </button>
-        </div>
-      </div>
-
-    </div>
-  </div><!-- /main-grid -->
-</div><!-- /page -->
-
 <script>
-// ── CONFIGURATION ─────────────────────────────────────────
-const SHEET_ID_KEY = 'rollcall_sheet_id';
+/* ═══════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════ */
+let allData = [];
+let groupedSports = {};
+let charts = {};
+let currentFileName = '';
 
-// ── ROTA CYCLE ────────────────────────────────────────────
-const ANCHOR = new Date(2026, 4, 26);
-const CYCLE = [
-  {day:'R3',night:'R1'},{day:'R3',night:'R1'},
-  {day:'R2',night:'R3'},{day:'R2',night:'R3'},
-  {day:'R1',night:'R2'},{day:'R1',night:'R2'},
-  {day:'R3',night:'R1'},{day:'R3',night:'R1'},
-  {day:'R2',night:'R3'},{day:'R2',night:'R3'},
-  {day:'R1',night:'R2'},{day:'R1',night:'R2'},
-];
+/* ═══════════════════════════════════════════════
+   UPLOAD / PARSE
+═══════════════════════════════════════════════ */
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
 
-// Day: shown from 07:00 (starts 08:00). Night: shown from 17:00 (starts 18:00).
-function detectShift(hour) { return (hour >= 7 && hour < 17) ? 'Day' : 'Night'; }
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('over'); processFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', e => processFile(e.target.files[0]));
 
-// Shift start times in hours
-const SHIFT_START = { Day: 8, Night: 18 };
-const SHIFT_END   = { Day: 18, Night: 8 }; // next day for night
-
-// ── STATE ─────────────────────────────────────────────────
-let roster = { R1:[], R2:[], R3:[] };
-let overrideRota = null, overrideShift = 'auto';
-let statuses = {};
-
-const CHIPS = [
-  {label:'ON DUTY',  cls:'chip-on',  type:'set'},
-  {label:'OFF DUTY', cls:'chip-off', type:'set'},
-  {label:'RS',  cls:'', type:'suffix',   code:'RS'},
-  {label:'MC',  cls:'', type:'datepick', code:'MC'},
-  {label:'VL',  cls:'', type:'datepick', code:'VL'},
-  {label:'OVL', cls:'', type:'datepick', code:'OVL'},
-  {label:'HL',  cls:'', type:'suffix',   code:'HL'},
-  {label:'CL',  cls:'', type:'datepick', code:'CL'},
-];
-
-// ── DATE HELPERS ──────────────────────────────────────────
-function fmtShort(date) {
-  return String(date.getDate()).padStart(2,'0') + '/'
-       + String(date.getMonth()+1).padStart(2,'0') + '/'
-       + String(date.getFullYear()).slice(2);
-}
-function fmtLong(date) {
-  return date.toLocaleDateString('en-SG',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
-}
-function getSelectedDate() {
-  const v = document.getElementById('date-input').value;
-  if (!v) return new Date();
-  const [y,m,d] = v.split('-').map(Number);
-  return new Date(y,m-1,d);
-}
-function getSchedule(date) {
-  const d = new Date(date.getFullYear(),date.getMonth(),date.getDate());
-  const a = new Date(ANCHOR.getFullYear(),ANCHOR.getMonth(),ANCHOR.getDate());
-  const diff = Math.round((d-a)/86400000);
-  return CYCLE[((diff%CYCLE.length)+CYCLE.length)%CYCLE.length];
-}
-function getInfo() {
-  const date = getSelectedDate();
-  const sched = getSchedule(date);
-  const now = new Date();
-  const autoShift = detectShift(now.getHours());
-  let rota, shift;
-  if (overrideRota) {
-    rota = overrideRota;
-    shift = overrideShift !== 'auto' ? overrideShift
-          : (sched.day === overrideRota ? 'Day' : sched.night === overrideRota ? 'Night' : 'Day');
+function processFile(file) {
+  if (!file) return;
+  currentFileName = file.name;
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'csv') {
+    Papa.parse(file, { header: false, skipEmptyLines: true, complete: r => handleRawRows(r.data) });
+  } else if (ext === 'xlsx') {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+      handleRawRows(rows);
+    };
+    reader.readAsArrayBuffer(file);
   } else {
-    shift = overrideShift !== 'auto' ? overrideShift : autoShift;
-    rota = shift === 'Day' ? sched.day : sched.night;
+    alert('Unsupported format. Please use CSV or XLSX.');
   }
-  const isAuto = !overrideRota && overrideShift === 'auto';
-  return {rota, shift, date, sched, isAuto};
 }
 
-// ── COUNTDOWN HELPERS ─────────────────────────────────────
-function secondsUntilHour(targetHour) {
-  const now = new Date();
-  const target = new Date(now);
-  target.setHours(targetHour, 0, 0, 0);
-  if (target <= now) target.setDate(target.getDate() + 1);
-  return Math.floor((target - now) / 1000);
-}
-function hhmmss(secs) {
-  const h = Math.floor(secs/3600);
-  const m = Math.floor((secs%3600)/60);
-  const s = secs%60;
-  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+function processPastedData() {
+  const raw = document.getElementById('pasteArea').value;
+  if (!raw.trim()) { alert('Paste some data first.'); return; }
+  const rows = raw.trim().split('\n').map(r => r.split('\t'));
+  handleRawRows(rows);
 }
 
-// ── CLOCK & DASHBOARD CARDS ───────────────────────────────
-function tickClock() {
-  const now = new Date();
-  const hh = String(now.getHours()).padStart(2,'0');
-  const mm = String(now.getMinutes()).padStart(2,'0');
-  const ss = String(now.getSeconds()).padStart(2,'0');
-  document.getElementById('topbar-clock').textContent = `${hh}:${mm}:${ss}`;
-  updateCards();
+function handleRawRows(rows) {
+  const hIdx = rows.findIndex(r => r.some(c => String(c).toLowerCase().includes('response id')));
+  if (hIdx === -1) { alert('Could not find the header row. Make sure this is an unmodified form export.'); return; }
+  const headers = rows[hIdx];
+  const formatted = rows.slice(hIdx + 1).map(row => {
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = row[i] !== undefined ? String(row[i]) : ''; });
+    return obj;
+  }).filter(obj => Object.values(obj).some(v => v.trim()));
+  processRows(formatted);
 }
 
-function updateCards() {
-  const now = new Date();
-  const hour = now.getHours();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const sched = getSchedule(today);
-
-  // Current shift = what's actually running right now (not the "incoming" shown in controls)
-  // Night shift runs 18:00–08:00; Day runs 08:00–18:00
-  let currentShift, currentRota, incomingShift, incomingRota;
-
-  if (hour >= 8 && hour < 18) {
-    // Day shift is ON
-    currentShift = 'Day'; currentRota = sched.day;
-    incomingShift = 'Night'; incomingRota = sched.night;
-  } else if (hour >= 18) {
-    // Night shift started today
-    currentShift = 'Night'; currentRota = sched.night;
-    // Incoming = tomorrow's day shift
-    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate()+1);
-    const tSched = getSchedule(tomorrow);
-    incomingShift = 'Day'; incomingRota = tSched.day;
-  } else {
-    // hour < 8: overnight — night shift from yesterday
-    const yesterday = new Date(today); yesterday.setDate(yesterday.getDate()-1);
-    const ySched = getSchedule(yesterday);
-    currentShift = 'Night'; currentRota = ySched.night;
-    incomingShift = 'Day'; incomingRota = sched.day;
-  }
-
-  document.getElementById('card-current-rota').textContent =
-    `Rota ${currentRota.replace('R','')} · ${currentShift} Shift`;
-  document.getElementById('card-incoming-rota').textContent =
-    `Rota ${incomingRota.replace('R','')} · ${incomingShift} Shift`;
-
-  // Single shared countdown — counts down to when current shift ENDS (= when incoming begins)
-  const currentEndHour = currentShift === 'Day' ? 18 : 8;
-  const secs = secondsUntilHour(currentEndHour);
-  document.getElementById('banner-countdown').textContent = hhmmss(secs);
-  document.getElementById('banner-countdown-label').textContent = 'ends / begins in';
-
-  // Color incoming eyebrow
-  const incomingEyebrow = document.getElementById('card-incoming-eyebrow');
-  incomingEyebrow.textContent = 'Incoming shift';
-  incomingEyebrow.parentElement.className = 'banner-half banner-incoming' + (incomingShift === 'Night' ? '-night' : '');
-}
-
-// ── ROSTER LOADING ────────────────────────────────────────
-function getSheetId() { return localStorage.getItem(SHEET_ID_KEY) || ''; }
-
-async function loadRoster() {
-  const id = getSheetId();
-  const dot = document.getElementById('roster-dot');
-  const txt = document.getElementById('roster-status-text');
-  const badge = document.getElementById('roster-badge');
-
-  if (!id) {
-    dot.className='rdot error'; txt.textContent='no sheet — click ⚙ configure above';
-    badge.style.display='none';
-    useBuiltInFallback(); renderSheetEmbed(); render(); return;
-  }
-
-  dot.className='rdot loading'; txt.textContent='loading...';
-  const urls = [
-    `https://docs.google.com/spreadsheets/d/${id}/pub?gid=0&single=true&output=csv`,
-    `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&sheet=Roster`,
-    `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&sheet=Roster`,
-  ];
-  let loaded = false;
-  for (const url of urls) {
-    try {
-      const r = await fetch(url,{cache:'no-cache'});
-      if (!r.ok) continue;
-      const csv = await r.text();
-      if (!csv || csv.includes('<!DOCTYPE')) continue;
-      parseRosterCSV(csv);
-      if (Object.values(roster).flat().length === 0) continue;
-      loaded = true; break;
-    } catch(e) { continue; }
-  }
-  if (loaded) {
-    const n = Object.values(roster).flat().length;
-    dot.className='rdot'; txt.textContent=`${n} personnel loaded`;
-    badge.style.display=''; badge.textContent='live';
-  } else {
-    dot.className='rdot error'; txt.textContent='sheet error — using fallback';
-    badge.style.display=''; badge.className='widget-badge badge-err'; badge.textContent='error';
-    useBuiltInFallback();
-  }
-  renderSheetEmbed(); render();
-}
-
-function parseRosterCSV(csv) {
-  roster={R1:[],R2:[],R3:[]};
-  csv.trim().split('\n').slice(1).forEach(line => {
-    const cols=(line.match(/(".*?"|[^,]+)/g)||[]).map(c=>c.replace(/^"|"$/g,'').trim().toUpperCase());
-    const raw=cols[0], name=cols[1];
-    if(!name) return;
-    const rota = (raw==='1'||raw==='2'||raw==='3') ? 'R'+raw : raw;
-    if(roster[rota]) roster[rota].push(name);
-  });
-}
-
-function useBuiltInFallback() {
-  roster={
-    R1:['SYAHIR','PRAVIN','SULAIMAN','TERRY','JIQIANG'],
-    R2:['PIERCE','ADEL','ALOYSIUS','YANG ZHI','FURQAN'],
-    R3:['JIA LE','DANIAL','ALOYSIUS','KINGSLEY','IZZULHADI']
-  };
-}
-
-function renderSheetEmbed() {
-  const id = getSheetId();
-  const wrap = document.getElementById('sheets-embed-wrap');
-  if (!id) {
-    wrap.innerHTML = '<div class="sheets-placeholder" id="sheets-placeholder"><span>Configure a Sheet ID above to<br>view and edit your roster here</span></div>';
-    return;
-  }
-  const src = `https://docs.google.com/spreadsheets/d/${id}/edit?usp=sharing&rm=minimal&embedded=true`;
-  wrap.innerHTML = `<iframe src="${src}" frameborder="0" allowfullscreen></iframe>`;
-}
-
-// ── OVERRIDES ─────────────────────────────────────────────
-function setRotaOverride(r) { overrideRota = overrideRota===r?null:r; statuses={}; render(); }
-function setShiftOverride(s) { overrideShift=s; statuses={}; render(); }
-function onDateChange() { statuses={}; render(); }
-
-// ── RENDER ────────────────────────────────────────────────
-function render() {
-  const {rota, shift, isAuto} = getInfo();
-  const roNum = rota.replace('R','');
-
-  document.getElementById('topbar-date').textContent = fmtLong(getSelectedDate());
-  document.getElementById('rota-label').textContent = `Rota ${roNum}`;
-
-  const ctrlBadge = document.getElementById('ctrl-badge');
-  ctrlBadge.textContent = isAuto ? 'AUTO' : 'OVERRIDE';
-  ctrlBadge.className = 'widget-badge ' + (isAuto ? (shift==='Day'?'badge-day':'badge-night') : 'badge-override');
-
-  ['R1','R2','R3'].forEach(r => {
-    document.getElementById('pill-'+r).className = 'pill'+(overrideRota===r?' p-neutral':'');
-  });
-  document.getElementById('pill-Day').className   = 'pill'+(overrideShift==='Day'  ?  ' p-day':'');
-  document.getElementById('pill-Night').className = 'pill'+(overrideShift==='Night'?' p-night':'');
-  document.getElementById('pill-auto').className  = 'pill'+(overrideShift==='auto' ?' p-neutral':'');
-
-  const people = roster[rota]||[];
-  const list = document.getElementById('person-list');
-  list.innerHTML='';
-
-  people.forEach((name,idx) => {
-    const key = `${rota}-${name}`;
-    if(!statuses[key]) statuses[key]='ON DUTY';
-
-    const block = document.createElement('div');
-    block.className = 'person-block';
-
-    const top = document.createElement('div');
-    top.className = 'person-top';
-
-    const rank = document.createElement('span');
-    rank.className = 'person-rank';
-    rank.textContent = idx+1;
-
-    const nameEl = document.createElement('span');
-    nameEl.className = 'person-name';
-    nameEl.textContent = name;
-
-    const wrap = document.createElement('div');
-    wrap.className = 'status-wrap';
-
-    const input = document.createElement('input');
-    input.type='text'; input.className='status-input';
-    input.value=statuses[key]; input.placeholder='status...';
-    input.setAttribute('autocomplete','off');
-    input.setAttribute('autocorrect','off');
-    input.setAttribute('autocapitalize','characters');
-    input.setAttribute('spellcheck','false');
-    input.addEventListener('input',()=>{ statuses[key]=input.value; updatePreview(); });
-    input.addEventListener('focus',()=> block.classList.add('focused'));
-    input.addEventListener('blur',()=> setTimeout(()=>block.classList.remove('focused'),180));
-
-    wrap.appendChild(input);
-    top.appendChild(rank); top.appendChild(nameEl); top.appendChild(wrap);
-    block.appendChild(top);
-
-    const chipsRow = document.createElement('div');
-    chipsRow.className = 'chips-row';
-    CHIPS.forEach(c => {
-      const chip = document.createElement('button');
-      chip.className='chip '+c.cls; chip.textContent=c.label; chip.type='button';
-      chip.addEventListener('mousedown', e => {
-        e.preventDefault();
-        if (c.type==='set') {
-          input.value=c.label; statuses[key]=c.label; input.focus(); updatePreview();
-        } else if (c.type==='suffix') {
-          const base=input.value.split(' (')[0]||'ON DUTY';
-          input.value=base+' ('+c.code+')'; statuses[key]=input.value; input.focus(); updatePreview();
-        } else if (c.type==='datepick') {
-          openDatePicker(c.code, input, key);
-        }
-      });
-      chipsRow.appendChild(chip);
+function processRows(rows) {
+  allData = [];
+  rows.forEach(row => {
+    const keys = Object.keys(row);
+    const find = (...names) => {
+      for (const k of keys) {
+        const n = k.toLowerCase();
+        for (const nm of names) if (n.includes(nm)) return (row[k] || '').trim();
+      }
+      return '';
+    };
+    const sportsRaw = find('sport');
+    const sports = sportsRaw.split(';').map(s => s.trim()).filter(Boolean);
+    allData.push({
+      rank:    find('rank'),
+      name:    find('full name', 'name'),
+      unit:    find('unit'),
+      gender:  find('gender'),
+      type:    find('nsf / regular', 'nsf'),
+      medical: find('medical'),
+      phone:   find('mobile', 'phone', 'contact'),
+      sports
     });
-    block.appendChild(chipsRow);
-    list.appendChild(block);
+  });
+  buildGrouped();
+  renderDashboard();
+  checkSharedLoad(); // no-op after first real load
+}
+
+function buildGrouped() {
+  groupedSports = {};
+  allData.forEach(p => p.sports.forEach(s => {
+    if (!groupedSports[s]) groupedSports[s] = [];
+    groupedSports[s].push(p);
+  }));
+}
+
+/* ═══════════════════════════════════════════════
+   RENDER
+═══════════════════════════════════════════════ */
+function renderDashboard() {
+  document.getElementById('dropZone').classList.add('hidden');
+  document.getElementById('dashboard').classList.remove('hidden');
+  document.getElementById('dashTitle').textContent = currentFileName || 'Dashboard';
+  document.getElementById('dashSub').textContent = allData.length + ' respondents · ' + Object.keys(groupedSports).length + ' sports';
+
+  const nsf = allData.filter(x => x.type.toLowerCase().includes('nsf')).length;
+  document.getElementById('mTotal').textContent = allData.length;
+  document.getElementById('mSports').textContent = Object.keys(groupedSports).length;
+  document.getElementById('mNsf').textContent = nsf;
+  document.getElementById('mReg').textContent = allData.length - nsf;
+
+  renderWarnings();
+  renderCharts();
+  renderSummary();
+  buildUnitFilter();
+  buildSportFilterTabs();
+  renderSportCards();
+  buildShareUrl();
+}
+
+function renderWarnings() {
+  const warns = [];
+  const missing = allData.filter(x => !x.name);
+  if (missing.length) warns.push(missing.length + ' rows missing a name.');
+  const seen = new Set(); const dupes = [];
+  allData.forEach(x => { const k = x.name.toLowerCase(); if (seen.has(k) && x.name) dupes.push(x.name); seen.add(k); });
+  if (dupes.length) warns.push('Possible duplicate submissions: ' + dupes.join(', ') + '.');
+  document.getElementById('warnings').innerHTML = warns.map(w =>
+    `<div class="warning-box"><i class="ti ti-alert-triangle" style="font-size:15px;flex-shrink:0" aria-hidden="true"></i>${escHtml(w)}</div>`
+  ).join('');
+}
+
+function renderCharts() {
+  Object.values(charts).forEach(c => c && c.destroy());
+  charts = {};
+
+  const dark = window.matchMedia('(prefers-color-scheme:dark)').matches;
+  const grid = dark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.06)';
+  const tick = dark ? '#9a9990' : '#6b6a66';
+
+  // Gender doughnut — order: Female first (pink), Male (blue), Unknown (gray)
+  const gc = {}; allData.forEach(x => { const g = x.gender || 'Unknown'; gc[g] = (gc[g]||0)+1; });
+  const gKeys = Object.keys(gc);
+  const gColors = gKeys.map(k => {
+    const l = k.toLowerCase();
+    if (l.includes('female') || l === 'f') return '#D4537E';
+    if (l.includes('male') || l === 'm') return '#378ADD';
+    return '#888780';
+  });
+  charts.gender = new Chart(document.getElementById('genderChart'), {
+    type: 'doughnut',
+    data: { labels: gKeys, datasets: [{ data: gKeys.map(k=>gc[k]), backgroundColor: gColors, borderWidth:0 }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ font:{size:11}, boxWidth:10, padding:8, color:tick } } } }
   });
 
-  updatePreview();
-}
-
-function updatePreview() {
-  const {rota, shift, date} = getInfo();
-  const roNum = rota.replace('R','');
-  const lines = ['Attendance and Roll Call','',`Rota ${roNum} ${shift.toUpperCase()} Shift ${fmtShort(date)}`];
-  (roster[rota]||[]).forEach(name => {
-    const key=`${rota}-${name}`;
-    lines.push(`${name} - ${(statuses[key]||'ON DUTY').trim()}`);
+  // Unit bar
+  const uc = {}; allData.forEach(x => { const u = x.unit||'Unknown'; uc[u]=(uc[u]||0)+1; });
+  const uKeys = Object.keys(uc).sort((a,b)=>uc[b]-uc[a]);
+  charts.unit = new Chart(document.getElementById('unitChart'), {
+    type:'bar',
+    data:{ labels:uKeys, datasets:[{ data:uKeys.map(k=>uc[k]), backgroundColor:'#1D9E75', borderWidth:0, borderRadius:3 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{ticks:{font:{size:10},color:tick},grid:{color:grid}}, y:{ticks:{stepSize:1,color:tick},grid:{color:grid}} } }
   });
-  document.getElementById('preview').value = lines.join('\n');
-}
 
-function copyMessage() {
-  const text = document.getElementById('preview').textContent;
-  const btn = document.getElementById('copy-btn');
-  const ok = () => {
-    btn.classList.add('success'); btn.textContent='✓  Copied!';
-    setTimeout(()=>{ btn.classList.remove('success'); btn.innerHTML='✦ &nbsp;Copy to Clipboard'; },2500);
-  };
-  navigator.clipboard.writeText(text).then(ok).catch(()=>{
-    const ta=document.createElement('textarea'); ta.value=text;
-    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); ok();
+  // Distribution histogram
+  const dc = {}; allData.forEach(x => { const n=x.sports.length; dc[n]=(dc[n]||0)+1; });
+  const dKeys = Object.keys(dc).map(Number).sort((a,b)=>a-b);
+  charts.dist = new Chart(document.getElementById('distChart'), {
+    type:'bar',
+    data:{ labels:dKeys.map(k=>k+(k===1?' sport':' sports')), datasets:[{ data:dKeys.map(k=>dc[k]), backgroundColor:'#7F77DD', borderWidth:0, borderRadius:3 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{ticks:{font:{size:10},color:tick},grid:{color:grid}}, y:{ticks:{stepSize:1,color:tick},grid:{color:grid}} } }
   });
-}
 
-// ── CONFIG ────────────────────────────────────────────────
-function toggleRosterPanel() {
-  const panel = document.getElementById('roster-panel');
-  const chevron = document.getElementById('roster-chevron');
-  const open = panel.classList.toggle('open');
-  chevron.style.transform = open ? 'rotate(90deg)' : 'rotate(0deg)';
-}
-function toggleConfig() {
-  const slide = document.getElementById('config-slide');
-  const open = slide.classList.toggle('open');
-  document.getElementById('cfg-toggle-text').textContent = open ? 'close' : 'configure';
-  if (open) document.getElementById('sheet-id-input').value = getSheetId();
-  // Make sure the roster panel is open if config is opened
-  if (open) {
-    const panel = document.getElementById('roster-panel');
-    if (!panel.classList.contains('open')) {
-      panel.classList.add('open');
-      document.getElementById('roster-chevron').style.transform = 'rotate(90deg)';
+  // Sports popularity horizontal bar
+  const sList = Object.entries(groupedSports).sort((a,b)=>b[1].length-a[1].length);
+  const sLabels = sList.map(([s])=>s);
+  const sCounts = sList.map(([,p])=>p.length);
+  const sHeight = Math.max(220, sLabels.length * 26 + 40);
+  document.getElementById('sportsChart').parentElement.style.height = sHeight + 'px';
+  charts.sports = new Chart(document.getElementById('sportsChart'), {
+    type:'bar',
+    data:{ labels:sLabels, datasets:[{ data:sCounts, backgroundColor:'#378ADD', borderWidth:0, borderRadius:3 }] },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{ x:{ticks:{stepSize:1,color:tick},grid:{color:grid}}, y:{ticks:{font:{size:11},color:tick},grid:{display:false}} }
     }
-  }
-}
-function saveSheetId() {
-  localStorage.setItem(SHEET_ID_KEY, document.getElementById('sheet-id-input').value.trim());
-  document.getElementById('config-slide').classList.remove('open');
-  document.getElementById('cfg-toggle-text').textContent = 'configure';
-  statuses={}; loadRoster();
+  });
 }
 
-// ── DATE PICKER ───────────────────────────────────────────
-function openDatePicker(code, input, key) {
-  const ex=document.getElementById('dp-overlay'); if(ex) ex.remove();
-  const today=new Date();
-  let viewYear=today.getFullYear(), viewMonth=today.getMonth();
-  let pick1=null, pick2=null;
+function renderSummary() {
+  const top = Object.entries(groupedSports).sort((a,b)=>b[1].length-a[1].length)[0];
+  const avg = (allData.reduce((s,x)=>s+x.sports.length,0)/allData.length).toFixed(1);
+  const medCount = allData.filter(x => { const m=x.medical.toLowerCase(); return m && !['nil','none','no.','no','ni','-','n/a','nill','na',''].includes(m); }).length;
+  document.getElementById('summaryInsights').innerHTML =
+    `<strong>${escHtml(top[0])}</strong> is the most popular sport with <strong>${top[1].length}</strong> interested participants.<br>
+    Respondents indicated an average of <strong>${avg}</strong> sports each.<br>
+    <strong>${Object.keys(groupedSports).length}</strong> sport categories detected across <strong>${allData.length}</strong> respondents.` +
+    (medCount ? `<br><strong>${medCount}</strong> respondent${medCount>1?'s':''} have flagged a medical condition — check individual cards below.` : '');
+}
 
-  const overlay=document.createElement('div'); overlay.className='dp-overlay'; overlay.id='dp-overlay';
-  const modal=document.createElement('div'); modal.className='dp-modal';
-  modal.addEventListener('mousedown',e=>e.stopPropagation());
+function buildUnitFilter() {
+  const units = [...new Set(allData.map(x=>x.unit).filter(Boolean))].sort();
+  const sel = document.getElementById('unitFilter');
+  sel.innerHTML = '<option value="all">All units</option>' + units.map(u=>`<option value="${escHtml(u)}">${escHtml(u)}</option>`).join('');
+}
 
-  function fp(d){ return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0'); }
+function buildSportFilterTabs() {
+  const sorted = Object.entries(groupedSports).sort((a,b)=>b[1].length-a[1].length);
+  const tabs = document.getElementById('sportFilterTabs');
+  tabs.innerHTML = `<button class="sport-filter-tab active" data-sport="all">All sports</button>` +
+    sorted.map(([s])=>`<button class="sport-filter-tab" data-sport="${escHtml(s)}">${escHtml(s)}</button>`).join('');
+  tabs.addEventListener('click', function(e) {
+    const btn = e.target.closest('.sport-filter-tab');
+    if (!btn) return;
+    activeSportFilter = btn.getAttribute('data-sport');
+    tabs.querySelectorAll('.sport-filter-tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    renderSportCards();
+  });
+}
 
-  function build() {
-    modal.innerHTML='';
-    const hdr=document.createElement('div'); hdr.className='dp-header';
-    const prev=document.createElement('button'); prev.className='dp-nav'; prev.textContent='‹';
-    prev.addEventListener('mousedown',e=>{ e.preventDefault(); viewMonth--; if(viewMonth<0){viewMonth=11;viewYear--;} build(); });
-    const next=document.createElement('button'); next.className='dp-nav'; next.textContent='›';
-    next.addEventListener('mousedown',e=>{ e.preventDefault(); viewMonth++; if(viewMonth>11){viewMonth=0;viewYear++;} build(); });
-    const ttl=document.createElement('span'); ttl.className='dp-title';
-    ttl.textContent=new Date(viewYear,viewMonth,1).toLocaleDateString('en-SG',{month:'long',year:'numeric'});
-    hdr.appendChild(prev); hdr.appendChild(ttl); hdr.appendChild(next); modal.appendChild(hdr);
+let activeSportFilter = 'all';
 
-    const grid=document.createElement('div'); grid.className='dp-grid';
-    ['Su','Mo','Tu','We','Th','Fr','Sa'].forEach(d=>{ const el=document.createElement('div'); el.className='dp-dow'; el.textContent=d; grid.appendChild(el); });
+function renderSportCards() {
+  const search  = document.getElementById('searchInput').value.toLowerCase();
+  const type    = document.getElementById('typeFilter').value;
+  const unit    = document.getElementById('unitFilter').value;
+  const sport   = activeSportFilter;
 
-    const firstDay=new Date(viewYear,viewMonth,1).getDay();
-    const dim=new Date(viewYear,viewMonth+1,0).getDate();
-    for(let i=0;i<firstDay;i++){ const el=document.createElement('button'); el.className='dp-day empty'; grid.appendChild(el); }
-    for(let d=1;d<=dim;d++){
-      const td=new Date(viewYear,viewMonth,d);
-      const el=document.createElement('button'); el.className='dp-day'; el.textContent=d;
-      const isP1=pick1&&td.toDateString()===pick1.toDateString();
-      const isP2=pick2&&td.toDateString()===pick2.toDateString();
-      const inR=pick1&&pick2&&td>pick1&&td<pick2;
-      const isToday=td.toDateString()===today.toDateString();
-      if(isToday) el.classList.add('today');
-      if(isP1) el.classList.add('selected');
-      else if(isP2) el.classList.add('range-end');
-      else if(inR) el.classList.add('in-range');
-      el.addEventListener('mousedown',e=>{
-        e.preventDefault();
-        if(!pick1){ pick1=td; pick2=null; }
-        else if(!pick2){
-          if(td>pick1) pick2=td;
-          else if(td.toDateString()===pick1.toDateString()) pick1=null;
-          else { pick1=td; pick2=null; }
-        } else { pick1=td; pick2=null; }
-        build();
-      });
-      grid.appendChild(el);
-    }
-    modal.appendChild(grid);
+  const sorted = Object.entries(groupedSports).sort((a,b)=>b[1].length-a[1].length);
+  const container = document.getElementById('sportCards');
 
-    const hint=document.createElement('div'); hint.className='dp-hint';
-    if(!pick1) hint.textContent='tap a date to select';
-    else if(!pick2) hint.textContent=fp(pick1)+' — tap another date for a range';
-    else hint.textContent=code+' ('+fp(pick1)+' - '+fp(pick2)+')';
-    modal.appendChild(hint);
-
-    const acts=document.createElement('div'); acts.className='dp-actions';
-    const canc=document.createElement('button'); canc.className='dp-cancel'; canc.textContent='Cancel';
-    canc.addEventListener('mousedown',e=>{ e.preventDefault(); overlay.remove(); });
-    const conf=document.createElement('button'); conf.className='dp-confirm'; conf.textContent='Confirm';
-    conf.disabled=!pick1;
-    conf.addEventListener('mousedown',e=>{
-      e.preventDefault(); if(!pick1) return;
-      const base=input.value.split(' (')[0]||'ON DUTY';
-      const suf=pick2 ? code+' ('+fp(pick1)+' - '+fp(pick2)+')' : code+' ('+fp(pick1)+')';
-      input.value=base+' '+suf; statuses[key]=input.value;
-      updatePreview(); overlay.remove(); input.focus();
+  container.innerHTML = sorted.map(([sportName, participants], idx) => {
+    if (sport !== 'all' && sportName !== sport) return '';
+    const filtered = participants.filter(p => {
+      const matchSearch = !search ||
+        p.name.toLowerCase().includes(search) ||
+        p.unit.toLowerCase().includes(search) ||
+        sportName.toLowerCase().includes(search) ||
+        p.rank.toLowerCase().includes(search);
+      const matchType = type==='all' || p.type.toLowerCase().includes(type);
+      const matchUnit = unit==='all' || p.unit===unit;
+      return matchSearch && matchType && matchUnit;
     });
-    acts.appendChild(canc); acts.appendChild(conf); modal.appendChild(acts);
+    if (!filtered.length) return '';
+
+    const medical = filtered.filter(p => { const m=p.medical.toLowerCase(); return m && !['nil','none','no.','no','ni','-','n/a','nill','na',''].includes(m); });
+
+    return `<div class="sport-card">
+      <div class="sport-header" onclick="toggleSport(${idx})" aria-expanded="false" id="sport-hdr-${idx}">
+        <div class="sport-header-left">
+          <span class="sport-name-text">${escHtml(sportName)}</span>
+          <span class="sport-count-badge">${filtered.length} participant${filtered.length!==1?'s':''}</span>
+          ${medical.length ? `<span class="badge badge-medical"><i class="ti ti-heart-exclamation" style="font-size:11px;vertical-align:-1px" aria-hidden="true"></i> ${medical.length} medical</span>` : ''}
+        </div>
+        <i class="ti ti-chevron-down sport-chevron" id="sport-chev-${idx}" aria-hidden="true"></i>
+      </div>
+      <div class="sport-body" id="sport-body-${idx}">
+        ${filtered.map(p => {
+          const isNsf = p.type.toLowerCase().includes('nsf');
+          const hasMed = p.medical && !['nil','none','no.','no','ni','-','n/a','nill','na',''].includes(p.medical.toLowerCase());
+          return `<div class="person-row">
+            <div>
+              <div class="person-main">${escHtml(p.rank)} ${escHtml(p.name)}</div>
+              <div class="person-sub">
+                <span>${escHtml(p.unit)}</span>
+                ${p.phone ? `<span class="person-phone"><i class="ti ti-phone" style="font-size:12px" aria-hidden="true"></i>${escHtml(p.phone)}</span>` : ''}
+                ${hasMed ? `<span style="color:#A32D2D;font-size:11px"><i class="ti ti-alert-circle" style="font-size:12px;vertical-align:-1px" aria-hidden="true"></i> ${escHtml(p.medical)}</span>` : ''}
+              </div>
+            </div>
+            <span class="badge ${isNsf?'badge-nsf':'badge-reg'}">${escHtml(p.type)}</span>
+          </div>`;
+        }).join('')}
+        <div style="padding:10px 16px;display:flex;gap:8px;border-top:0.5px solid var(--border-light)">
+          <button class="btn" onclick="downloadSportRoster(${JSON.stringify(sportName)})"><i class="ti ti-download" aria-hidden="true"></i> Export roster</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleSport(idx) {
+  const body = document.getElementById('sport-body-' + idx);
+  const chev = document.getElementById('sport-chev-' + idx);
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  chev.classList.toggle('open', !isOpen);
+}
+
+/* ═══════════════════════════════════════════════
+   SHARE
+═══════════════════════════════════════════════ */
+function buildShareUrl(sportFilter) {
+  const payload = { data: allData, file: currentFileName };
+  if (sportFilter) payload.sportFilter = sportFilter;
+  try {
+    const json = JSON.stringify(payload);
+    const b64 = btoa(unescape(encodeURIComponent(json)));
+    const url = location.href.split('#')[0].split('?')[0] + '?d=' + encodeURIComponent(b64);
+    return url;
+  } catch(e) { return null; }
+}
+
+function openShareModal() {
+  buildShareUrl(); // ensure fresh
+  const url = buildShareUrl();
+  const inp = document.getElementById('shareUrlInput');
+  if (!url) {
+    document.getElementById('shareUrlNote').textContent = 'Dataset too large to encode in a URL. Use the Export CSV instead and share that file.';
+    inp.value = '(data too large)';
+  } else {
+    inp.value = url;
+    const kb = Math.round(encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify({data:allData,file:currentFileName}))))).length / 1024);
+    document.getElementById('shareUrlNote').textContent = `URL size: ~${kb} KB. Works best shared via messaging apps or email. The recipient opens it in any browser — no upload needed.`;
   }
-
-  build();
-  overlay.appendChild(modal);
-  overlay.addEventListener('mousedown',()=>overlay.remove());
-  document.body.appendChild(overlay);
+  // build convenor list
+  const sorted = Object.entries(groupedSports).sort((a,b)=>b[1].length-a[1].length);
+  document.getElementById('convenorList').innerHTML = sorted.map(([sport, people]) => {
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--border-light);gap:8px">
+      <div>
+        <div style="font-size:13px;font-weight:500">${escHtml(sport)}</div>
+        <div style="font-size:11px;color:var(--text-secondary)">${people.length} participant${people.length!==1?'s':''}</div>
+      </div>
+      <button class="btn copy-sport-btn" data-sport="${escHtml(sport)}"><i class="ti ti-copy" aria-hidden="true"></i> Copy link</button>
+    </div>`;
+  }).join('');
+  // attach listeners now that HTML is in DOM
+  document.querySelectorAll('.copy-sport-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const sport = this.getAttribute('data-sport');
+      const url = buildShareUrl(sport);
+      if (!url) { alert('Dataset too large to encode.'); return; }
+      navigator.clipboard.writeText(url).then(() => {
+        this.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Copied';
+        const self = this;
+        setTimeout(() => { self.innerHTML = '<i class="ti ti-copy" aria-hidden="true"></i> Copy link'; }, 2000);
+      });
+    });
+  });
+  document.getElementById('shareModal').classList.remove('hidden');
 }
 
-// ── INIT ──────────────────────────────────────────────────
-function init() {
-  const t=new Date();
-  document.getElementById('date-input').value =
-    `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
-  tickClock();
-  setInterval(tickClock, 1000);
-  loadRoster();
+function closeShareModal() { document.getElementById('shareModal').classList.add('hidden'); }
+document.getElementById('shareModal').addEventListener('click', e => { if(e.target===e.currentTarget) closeShareModal(); });
+
+function switchShareTab(tab, btn) {
+  document.querySelectorAll('.modal-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('shareTabLink').classList.toggle('hidden', tab!=='link');
+  document.getElementById('shareTabConvenor').classList.toggle('hidden', tab!=='bysport');
 }
 
-init();
+function copyShareUrl() {
+  navigator.clipboard.writeText(document.getElementById('shareUrlInput').value).then(() => {
+    const btn = event.currentTarget;
+    btn.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Copied';
+    setTimeout(() => { btn.innerHTML = '<i class="ti ti-copy" aria-hidden="true"></i> Copy'; }, 2000);
+  });
+}
+
+
+
+/* ═══════════════════════════════════════════════
+   SHARED LINK LOAD (runs on page open)
+═══════════════════════════════════════════════ */
+function checkSharedLoad() {}  // placeholder called after processRows, no-op
+
+(function initSharedLoad() {
+  const params = new URLSearchParams(location.search);
+  const d = params.get('d');
+  if (!d) return;
+  try {
+    const json = decodeURIComponent(escape(atob(decodeURIComponent(d))));
+    const payload = JSON.parse(json);
+    allData = payload.data || [];
+    currentFileName = payload.file || 'Shared dashboard';
+    buildGrouped();
+    renderDashboard();
+    // apply sport filter if convenor link
+    if (payload.sportFilter) {
+      activeSportFilter = payload.sportFilter;
+      document.querySelectorAll('.sport-filter-tab').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-sport') === payload.sportFilter);
+      });
+      renderSportCards();
+      document.getElementById('dashSub').textContent += ' · ' + payload.sportFilter;
+    }
+  } catch(e) {
+    console.warn('Could not load shared data:', e);
+  }
+})();
+
+/* ═══════════════════════════════════════════════
+   EXPORTS
+═══════════════════════════════════════════════ */
+function downloadSummary() {
+  const rows = [['Sport','Count','Participants']];
+  Object.entries(groupedSports).sort((a,b)=>b[1].length-a[1].length).forEach(([s,p]) => {
+    rows.push([s, p.length, p.map(x=>`${x.rank} ${x.name} (${x.unit})`).join(' | ')]);
+  });
+  dlCSV(rows, 'sports_summary.csv');
+}
+
+function downloadSportRoster(sport) {
+  const rows = [['Rank','Name','Unit','Type','Phone','Medical']];
+  (groupedSports[sport]||[]).forEach(p => rows.push([p.rank,p.name,p.unit,p.type,p.phone,p.medical]));
+  dlCSV(rows, sport.replace(/[^a-z0-9]/gi,'_')+'_roster.csv');
+}
+
+function dlCSV(rows, name) {
+  const csv = rows.map(r=>r.map(c=>`"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download = name; a.click();
+}
+
+function resetDashboard() {
+  allData=[]; groupedSports={};
+  Object.values(charts).forEach(c=>c&&c.destroy()); charts={};
+  document.getElementById('dashboard').classList.add('hidden');
+  document.getElementById('dropZone').classList.remove('hidden');
+  history.replaceState(null,'',location.pathname);
+}
+
+/* ═══════════════════════════════════════════════
+   UTILS
+═══════════════════════════════════════════════ */
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 </script>
 </body>
 </html>
