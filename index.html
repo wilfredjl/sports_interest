@@ -484,7 +484,7 @@ details[open] .paste-panel summary::after{transform:rotate(90deg)}
   <div class="modal">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
       <h3><i class="ti ti-share" style="font-size:16px;vertical-align:-2px;margin-right:6px" aria-hidden="true"></i>Share dashboard</h3>
-      <button class="btn" onclick="closeShareModal()" style="padding:4px 10px"><i class="ti ti-x" aria-hidden="true"></i></button>
+      <button class="btn" onclick="event.stopPropagation();closeShareModal()" style="padding:4px 10px"><i class="ti ti-x" aria-hidden="true"></i></button>
     </div>
 
     <div class="modal-tabs">
@@ -497,7 +497,8 @@ details[open] .paste-panel summary::after{transform:rotate(90deg)}
       <p>Copy this link to open a read-only view of the current dashboard. (No need to upload data, it is encoded directly in the URL.)</p>
       <div class="share-url-box">
         <input type="text" id="shareUrlInput" readonly>
-        <button class="btn btn-primary" onclick="copyShareUrl()"><i class="ti ti-copy" aria-hidden="true"></i> Copy</button>
+        <button class="btn btn-primary" id="copyShareBtn" onclick="copyShareUrl(this)"><i class="ti ti-copy" aria-hidden="true"></i> Copy</button>
+        <button class="btn" id="shortenBtn" onclick="shortenShareUrl(this)"><i class="ti ti-scissors" aria-hidden="true"></i> Shorten</button>
       </div>
       <div class="share-note" id="shareUrlNote"></div>
     </div>
@@ -847,6 +848,10 @@ async function openShareModal() {
   const inp = document.getElementById('shareUrlInput');
   inp.value = 'Generating link…';
   document.getElementById('shareUrlNote').textContent = '';
+  document.getElementById('copyShareBtn').innerHTML = '<i class="ti ti-copy" aria-hidden="true"></i> Copy';
+  const shortenBtn = document.getElementById('shortenBtn');
+  shortenBtn.innerHTML = '<i class="ti ti-scissors" aria-hidden="true"></i> Shorten';
+  shortenBtn.disabled = false;
 
   const url = await buildShareUrl();
   if (!url) {
@@ -898,12 +903,42 @@ function switchShareTab(tab, btn) {
   document.getElementById('shareTabConvenor').classList.toggle('hidden', tab!=='bysport');
 }
 
-function copyShareUrl() {
-  navigator.clipboard.writeText(document.getElementById('shareUrlInput').value).then(() => {
-    const btn = event.currentTarget;
+function copyShareUrl(btn) {
+  const val = document.getElementById('shareUrlInput').value;
+  if (!val || val === 'Generating link…') return;
+  navigator.clipboard.writeText(val).then(() => {
     btn.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Copied';
     setTimeout(() => { btn.innerHTML = '<i class="ti ti-copy" aria-hidden="true"></i> Copy'; }, 2000);
   });
+}
+
+async function shortenShareUrl(btn) {
+  const inp = document.getElementById('shareUrlInput');
+  const longUrl = inp.value;
+  if (!longUrl || longUrl === 'Generating link…' || longUrl === '(error)') return;
+  // Don't re-shorten an already-shortened URL
+  if (longUrl.includes('tinyurl.com')) {
+    navigator.clipboard.writeText(longUrl);
+    return;
+  }
+  btn.innerHTML = '<i class="ti ti-loader-2" aria-hidden="true"></i> Shortening…';
+  btn.disabled = true;
+  try {
+    const res = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`);
+    if (!res.ok) throw new Error('TinyURL error');
+    const short = await res.text();
+    inp.value = short.trim();
+    document.getElementById('shareUrlNote').textContent = `Shortened via TinyURL. Original compressed URL has been replaced above.`;
+    btn.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Shortened';
+    // Reset copy button label since URL changed
+    const copyBtn = document.getElementById('copyShareBtn');
+    copyBtn.innerHTML = '<i class="ti ti-copy" aria-hidden="true"></i> Copy';
+    setTimeout(() => { btn.innerHTML = '<i class="ti ti-scissors" aria-hidden="true"></i> Shorten'; btn.disabled = false; }, 2000);
+  } catch(e) {
+    btn.innerHTML = '<i class="ti ti-alert-triangle" aria-hidden="true"></i> Failed';
+    document.getElementById('shareUrlNote').textContent = 'Could not reach TinyURL. Copy the long URL instead.';
+    setTimeout(() => { btn.innerHTML = '<i class="ti ti-scissors" aria-hidden="true"></i> Shorten'; btn.disabled = false; }, 2500);
+  }
 }
 
 
