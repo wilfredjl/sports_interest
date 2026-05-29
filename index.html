@@ -8,6 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 <style>
 :root {
   --bg-primary:#ffffff;
@@ -805,14 +806,36 @@ function toggleSport(idx) {
    SHARE
 ═══════════════════════════════════════════════ */
 function buildShareUrl(sportFilter) {
-  const payload = { data: allData, file: currentFileName };
-  if (sportFilter) payload.sportFilter = sportFilter;
+
   try {
-    const json = JSON.stringify(payload);
-    const b64 = btoa(unescape(encodeURIComponent(json)));
-    const url = location.href.split('#')[0].split('?')[0] + '?d=' + encodeURIComponent(b64);
-    return url;
-  } catch(e) { return null; }
+
+    const shareId =
+      'sid_' +
+      Date.now().toString(36) +
+      Math.random().toString(36).slice(2, 8);
+
+    const payload = {
+      data: allData,
+      file: currentFileName,
+      sportFilter: sportFilter || null
+    };
+
+    localStorage.setItem(
+      'sports_share_' + shareId,
+      JSON.stringify(payload)
+    );
+
+    return (
+      location.href.split('#')[0].split('?')[0] +
+      '?share=' +
+      encodeURIComponent(shareId)
+    );
+
+  } catch (e) {
+
+    console.error(e);
+    return null;
+  }
 }
 
 function openShareModal() {
@@ -881,26 +904,45 @@ function checkSharedLoad() {}  // placeholder called after processRows, no-op
 
 (function initSharedLoad() {
   const params = new URLSearchParams(location.search);
-  const d = params.get('d');
-  if (!d) return;
-  try {
-    const json = decodeURIComponent(escape(atob(decodeURIComponent(d))));
-    const payload = JSON.parse(json);
-    allData = payload.data || [];
-    currentFileName = payload.file || 'Shared dashboard';
-    buildGrouped();
-    renderDashboard();
-    // apply sport filter if convenor link
-    if (payload.sportFilter) {
-      activeSportFilter = payload.sportFilter;
-      document.querySelectorAll('.sport-filter-tab').forEach(b => {
-        b.classList.toggle('active', b.getAttribute('data-sport') === payload.sportFilter);
-      });
-      renderSportCards();
-      document.getElementById('dashSub').textContent += ' · ' + payload.sportFilter;
+  // NEW METHOD
+  const shareId = params.get('share');
+  if (shareId) {
+    try {
+      const raw = localStorage.getItem(
+        'sports_share_' + shareId
+      );
+      if (!raw) {
+        alert(
+          'Shared data not found on this device/browser.'
+        );
+        return;
+      }
+      const payload = JSON.parse(raw);
+      allData = payload.data || [];
+      currentFileName =
+        payload.file || 'Shared dashboard';
+      buildGrouped();
+      renderDashboard();
+      // sport filter
+      if (payload.sportFilter) {
+        activeSportFilter = payload.sportFilter;
+        document
+          .querySelectorAll('.sport-filter-tab')
+          .forEach(b => {
+            b.classList.toggle(
+              'active',
+              b.getAttribute('data-sport') === payload.sportFilter
+            );
+          });
+
+        renderSportCards();
+        document.getElementById('dashSub').textContent +=
+          ' · ' + payload.sportFilter;
+      }
+    } catch (e) {
+      console.warn('Could not load shared data:', e);
     }
-  } catch(e) {
-    console.warn('Could not load shared data:', e);
+    return;
   }
 })();
 
