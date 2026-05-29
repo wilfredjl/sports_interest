@@ -8,7 +8,6 @@
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 <style>
 :root {
   --bg-primary:#ffffff;
@@ -629,7 +628,6 @@ function renderDashboard() {
   buildUnitFilter();
   buildSportFilterTabs();
   renderSportCards();
-  buildShareUrl();
 }
 
 function renderWarnings() {
@@ -803,53 +801,63 @@ function toggleSport(idx) {
 }
 
 /* ═══════════════════════════════════════════════
-   SHARE
+   SHARE  (compression-based to keep URLs short)
 ═══════════════════════════════════════════════ */
-function buildShareUrl(sportFilter) {
 
-  try {
-
-    const shareId =
-      'sid_' +
-      Date.now().toString(36) +
-      Math.random().toString(36).slice(2, 8);
-
-    const payload = {
-      data: allData,
-      file: currentFileName,
-      sportFilter: sportFilter || null
-    };
-
-    localStorage.setItem(
-      'sports_share_' + shareId,
-      JSON.stringify(payload)
-    );
-
-    return (
-      location.href.split('#')[0].split('?')[0] +
-      '?share=' +
-      encodeURIComponent(shareId)
-    );
-
-  } catch (e) {
-
-    console.error(e);
-    return null;
-  }
+// Compress a string with gzip and return a base64url string
+async function compressToB64(str) {
+  const bytes = new TextEncoder().encode(str);
+  const cs = new CompressionStream('gzip');
+  const writer = cs.writable.getWriter();
+  writer.write(bytes);
+  writer.close();
+  const compressed = await new Response(cs.readable).arrayBuffer();
+  // base64url (no +/= issues in query strings)
+  let binary = '';
+  const u8 = new Uint8Array(compressed);
+  for (let i = 0; i < u8.length; i++) binary += String.fromCharCode(u8[i]);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-function openShareModal() {
-  buildShareUrl(); // ensure fresh
-  const url = buildShareUrl();
+// Decompress a base64url string back to the original string
+async function decompressFromB64(b64url) {
+  const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const ds = new DecompressionStream('gzip');
+  const writer = ds.writable.getWriter();
+  writer.write(bytes);
+  writer.close();
+  const decompressed = await new Response(ds.readable).arrayBuffer();
+  return new TextDecoder().decode(decompressed);
+}
+
+async function buildShareUrl(sportFilter) {
+  const payload = { data: allData, file: currentFileName };
+  if (sportFilter) payload.sportFilter = sportFilter;
+  try {
+    const json = JSON.stringify(payload);
+    const b64 = await compressToB64(json);
+    return location.href.split('#')[0].split('?')[0] + '?d=' + b64 + '&c=1';
+  } catch(e) { return null; }
+}
+
+async function openShareModal() {
   const inp = document.getElementById('shareUrlInput');
+  inp.value = 'Generating link…';
+  document.getElementById('shareUrlNote').textContent = '';
+
+  const url = await buildShareUrl();
   if (!url) {
-    document.getElementById('shareUrlNote').textContent = 'Dataset too large to encode in a URL. Use the Export CSV instead and share that file.';
-    inp.value = '(data too large)';
+    document.getElementById('shareUrlNote').textContent = 'Could not generate URL. Use Export CSV instead.';
+    inp.value = '(error)';
   } else {
     inp.value = url;
-    const kb = Math.round(encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify({data:allData,file:currentFileName}))))).length / 1024);
-    document.getElementById('shareUrlNote').textContent = `URL size: ~${kb} KB. Works best shared via messaging apps or email. The recipient opens it in any browser — no upload needed.`;
+    const kb = Math.round(url.length / 1024 * 10) / 10;
+    document.getElementById('shareUrlNote').textContent = `URL size: ~${kb} KB (compressed). Works best shared via messaging apps or email. The recipient opens it in any browser — no upload needed.`;
   }
+
   // build convenor list
   const sorted = Object.entries(groupedSports).sort((a,b)=>b[1].length-a[1].length);
   document.getElementById('convenorList').innerHTML = sorted.map(([sport, people]) => {
@@ -863,14 +871,17 @@ function openShareModal() {
   }).join('');
   // attach listeners now that HTML is in DOM
   document.querySelectorAll('.copy-sport-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
+    btn.addEventListener('click', async function() {
       const sport = this.getAttribute('data-sport');
-      const url = buildShareUrl(sport);
-      if (!url) { alert('Dataset too large to encode.'); return; }
+      const btnEl = this;
+      btnEl.innerHTML = '<i class="ti ti-loader-2" aria-hidden="true"></i> Building…';
+      btnEl.disabled = true;
+      const url = await buildShareUrl(sport);
+      btnEl.disabled = false;
+      if (!url) { alert('Could not generate URL.'); btnEl.innerHTML = '<i class="ti ti-copy" aria-hidden="true"></i> Copy link'; return; }
       navigator.clipboard.writeText(url).then(() => {
-        this.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Copied';
-        const self = this;
-        setTimeout(() => { self.innerHTML = '<i class="ti ti-copy" aria-hidden="true"></i> Copy link'; }, 2000);
+        btnEl.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Copied';
+        setTimeout(() => { btnEl.innerHTML = '<i class="ti ti-copy" aria-hidden="true"></i> Copy link'; }, 2000);
       });
     });
   });
@@ -902,47 +913,35 @@ function copyShareUrl() {
 ═══════════════════════════════════════════════ */
 function checkSharedLoad() {}  // placeholder called after processRows, no-op
 
-(function initSharedLoad() {
+(async function initSharedLoad() {
   const params = new URLSearchParams(location.search);
-  // NEW METHOD
-  const shareId = params.get('share');
-  if (shareId) {
-    try {
-      const raw = localStorage.getItem(
-        'sports_share_' + shareId
-      );
-      if (!raw) {
-        alert(
-          'Shared data not found on this device/browser.'
-        );
-        return;
-      }
-      const payload = JSON.parse(raw);
-      allData = payload.data || [];
-      currentFileName =
-        payload.file || 'Shared dashboard';
-      buildGrouped();
-      renderDashboard();
-      // sport filter
-      if (payload.sportFilter) {
-        activeSportFilter = payload.sportFilter;
-        document
-          .querySelectorAll('.sport-filter-tab')
-          .forEach(b => {
-            b.classList.toggle(
-              'active',
-              b.getAttribute('data-sport') === payload.sportFilter
-            );
-          });
-
-        renderSportCards();
-        document.getElementById('dashSub').textContent +=
-          ' · ' + payload.sportFilter;
-      }
-    } catch (e) {
-      console.warn('Could not load shared data:', e);
+  const d = params.get('d');
+  if (!d) return;
+  try {
+    let json;
+    if (params.get('c') === '1') {
+      // New compressed format
+      json = await decompressFromB64(d);
+    } else {
+      // Legacy plain base64 format
+      json = decodeURIComponent(escape(atob(decodeURIComponent(d))));
     }
-    return;
+    const payload = JSON.parse(json);
+    allData = payload.data || [];
+    currentFileName = payload.file || 'Shared dashboard';
+    buildGrouped();
+    renderDashboard();
+    // apply sport filter if convenor link
+    if (payload.sportFilter) {
+      activeSportFilter = payload.sportFilter;
+      document.querySelectorAll('.sport-filter-tab').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-sport') === payload.sportFilter);
+      });
+      renderSportCards();
+      document.getElementById('dashSub').textContent += ' · ' + payload.sportFilter;
+    }
+  } catch(e) {
+    console.warn('Could not load shared data:', e);
   }
 })();
 
