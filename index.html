@@ -927,7 +927,9 @@ async function shortenShareUrl(btn) {
     const res = await fetch(
     `https://v.gd/create.php?format=simple&url=${encodeURIComponent(longUrl)}`
     );
-    if (!res.ok) throw new Error('TinyURL error');
+    if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
+    }
     const short = await res.text();
     inp.value = short.trim();
     document.getElementById('shareUrlNote').textContent = `Shortened via TinyURL. Original compressed URL has been replaced above.`;
@@ -937,6 +939,7 @@ async function shortenShareUrl(btn) {
     copyBtn.innerHTML = '<i class="ti ti-copy" aria-hidden="true"></i> Copy';
     setTimeout(() => { btn.innerHTML = '<i class="ti ti-scissors" aria-hidden="true"></i> Shorten'; btn.disabled = false; }, 2000);
   } catch(e) {
+    console.error(e)
     btn.innerHTML = '<i class="ti ti-alert-triangle" aria-hidden="true"></i> Failed';
     document.getElementById('shareUrlNote').textContent = 'Could not reach TinyURL. Copy the long URL instead.';
     setTimeout(() => { btn.innerHTML = '<i class="ti ti-scissors" aria-hidden="true"></i> Shorten'; btn.disabled = false; }, 2500);
