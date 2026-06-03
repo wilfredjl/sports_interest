@@ -149,11 +149,21 @@ details[open] .paste-panel summary::after{transform:rotate(90deg)}
 .share-url-box{display:flex;gap:8px;margin-bottom:10px}
 .share-url-box input{flex:1;font-size:12px;padding:8px 10px;border:0.5px solid var(--border-med);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-secondary);font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .share-note{font-size:11px;color:var(--text-secondary);line-height:1.6}
+.modal-close-btn{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border:0.5px solid var(--border-light);border-radius:6px;cursor:pointer;background:transparent;color:var(--text-secondary);font-size:15px;flex-shrink:0;transition:background .12s,color .12s}
+.modal-close-btn:hover{background:var(--bg-secondary);color:var(--text-primary)}
 .sport-filter-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
 .sport-filter-tab{font-size:12px;padding:4px 12px;border:0.5px solid var(--border-light);border-radius:20px;cursor:pointer;background:transparent;color:var(--text-secondary);transition:all .12s}
 .sport-filter-tab.active{background:var(--text-primary);color:var(--bg-primary);border-color:transparent}
 .progress-bar-bg{height:5px;background:var(--bg-secondary);border-radius:3px;overflow:hidden;flex:1}
 .progress-bar{height:100%;border-radius:3px;transition:width .4s}
+
+/* ── Sport highlight banner (shown on filtered shared links) ── */
+.sport-hero-banner{background:var(--bg-primary);border:0.5px solid var(--border-med);border-radius:var(--radius-xl);padding:1.25rem 1.5rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.sport-hero-icon{width:44px;height:44px;border-radius:12px;background:var(--blue-bg);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.sport-hero-name{font-size:20px;font-weight:600;letter-spacing:-0.02em;line-height:1.2}
+.sport-hero-sub{font-size:13px;color:var(--text-secondary);margin-top:3px}
+.sport-hero-badge{margin-left:auto;background:var(--blue-bg);color:var(--blue-text);font-size:13px;font-weight:600;padding:6px 16px;border-radius:20px;white-space:nowrap}
+@media(max-width:500px){.sport-hero-badge{margin-left:0}}
 
 /* ─────────────────────────────────────────────
    Upload divider
@@ -404,6 +414,16 @@ details[open] .paste-panel summary::after{transform:rotate(90deg)}
   <!-- Dashboard -->
   <div id="dashboard" class="hidden">
 
+    <!-- Sport hero banner (shown only on sport-filtered shared links) -->
+    <div id="sportHeroBanner" class="sport-hero-banner hidden">
+      <div class="sport-hero-icon"><i class="ti ti-trophy" aria-hidden="true"></i></div>
+      <div>
+        <div class="sport-hero-name" id="sportHeroName"></div>
+        <div class="sport-hero-sub" id="sportHeroSub"></div>
+      </div>
+      <div class="sport-hero-badge" id="sportHeroBadge"></div>
+    </div>
+
     <div class="action-row">
       <div>
         <div class="action-title" id="dashTitle">Dashboard</div>
@@ -484,7 +504,7 @@ details[open] .paste-panel summary::after{transform:rotate(90deg)}
   <div class="modal">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
       <h3><i class="ti ti-share" style="font-size:16px;vertical-align:-2px;margin-right:6px" aria-hidden="true"></i>Share dashboard</h3>
-      <button class="btn" onclick="event.stopPropagation();closeShareModal()" style="padding:4px 10px"><i class="ti ti-x" aria-hidden="true"></i></button>
+      <button class="modal-close-btn" onclick="event.stopPropagation();closeShareModal()" aria-label="Close"><i class="ti ti-x" aria-hidden="true"></i></button>
     </div>
 
     <div class="modal-tabs">
@@ -866,15 +886,20 @@ async function openShareModal() {
   // build convenor list
   const sorted = Object.entries(groupedSports).sort((a,b)=>b[1].length-a[1].length);
   document.getElementById('convenorList').innerHTML = sorted.map(([sport, people]) => {
+    const sid = 'sport-' + btoa(encodeURIComponent(sport)).replace(/[^a-zA-Z0-9]/g,'').slice(0,12);
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--border-light);gap:8px">
       <div>
         <div style="font-size:13px;font-weight:500">${escHtml(sport)}</div>
         <div style="font-size:11px;color:var(--text-secondary)">${people.length} participant${people.length!==1?'s':''}</div>
       </div>
-      <button class="btn copy-sport-btn" data-sport="${escHtml(sport)}"><i class="ti ti-copy" aria-hidden="true"></i> Copy link</button>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn copy-sport-btn" data-sport="${escHtml(sport)}" data-sid="${sid}"><i class="ti ti-copy" aria-hidden="true"></i> Copy link</button>
+        <button class="btn shorten-sport-btn" data-sport="${escHtml(sport)}" data-sid="${sid}"><i class="ti ti-scissors" aria-hidden="true"></i> Shorten</button>
+      </div>
     </div>`;
   }).join('');
-  // attach listeners now that HTML is in DOM
+
+  // attach copy listeners
   document.querySelectorAll('.copy-sport-btn').forEach(btn => {
     btn.addEventListener('click', async function() {
       const sport = this.getAttribute('data-sport');
@@ -888,6 +913,29 @@ async function openShareModal() {
         btnEl.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Copied';
         setTimeout(() => { btnEl.innerHTML = '<i class="ti ti-copy" aria-hidden="true"></i> Copy link'; }, 2000);
       });
+    });
+  });
+
+  // attach shorten listeners (per-sport)
+  document.querySelectorAll('.shorten-sport-btn').forEach(btn => {
+    btn.addEventListener('click', async function() {
+      const sport = this.getAttribute('data-sport');
+      const btnEl = this;
+      btnEl.innerHTML = '<i class="ti ti-loader-2" aria-hidden="true"></i> Building…';
+      btnEl.disabled = true;
+      const longUrl = await buildShareUrl(sport);
+      if (!longUrl) { alert('Could not generate URL.'); btnEl.innerHTML = '<i class="ti ti-scissors" aria-hidden="true"></i> Shorten'; btnEl.disabled = false; return; }
+      try {
+        const short = await shortenUrl(longUrl);
+        navigator.clipboard.writeText(short).then(() => {
+          btnEl.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Copied short!';
+          setTimeout(() => { btnEl.innerHTML = '<i class="ti ti-scissors" aria-hidden="true"></i> Shorten'; btnEl.disabled = false; }, 2500);
+        });
+      } catch(e) {
+        navigator.clipboard.writeText(longUrl);
+        btnEl.innerHTML = '<i class="ti ti-alert-triangle" aria-hidden="true"></i> Shorten failed — long URL copied';
+        setTimeout(() => { btnEl.innerHTML = '<i class="ti ti-scissors" aria-hidden="true"></i> Shorten'; btnEl.disabled = false; }, 2500);
+      }
     });
   });
   document.getElementById('shareModal').classList.remove('hidden');
@@ -912,11 +960,24 @@ function copyShareUrl(btn) {
   });
 }
 
+// Shared URL shortener — uses TinyURL v2 API (no preview/redirect screen)
+async function shortenUrl(longUrl) {
+  const res = await fetch('https://api.tinyurl.com/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({ url: longUrl, domain: 'tinyurl.com' })
+  });
+  if (!res.ok) throw new Error('TinyURL API error ' + res.status);
+  const json = await res.json();
+  const short = json?.data?.tiny_url;
+  if (!short) throw new Error('No tiny_url in response');
+  return short;
+}
+
 async function shortenShareUrl(btn) {
   const inp = document.getElementById('shareUrlInput');
   const longUrl = inp.value;
   if (!longUrl || longUrl === 'Generating link…' || longUrl === '(error)') return;
-  // Don't re-shorten an already-shortened URL
   if (longUrl.includes('tinyurl.com')) {
     navigator.clipboard.writeText(longUrl);
     return;
@@ -924,13 +985,10 @@ async function shortenShareUrl(btn) {
   btn.innerHTML = '<i class="ti ti-loader-2" aria-hidden="true"></i> Shortening…';
   btn.disabled = true;
   try {
-    const res = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`);
-    if (!res.ok) throw new Error('TinyURL error');
-    const short = await res.text();
+    const short = await shortenUrl(longUrl);
     inp.value = short.trim();
     document.getElementById('shareUrlNote').textContent = `Shortened via TinyURL. Original compressed URL has been replaced above.`;
     btn.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Shortened';
-    // Reset copy button label since URL changed
     const copyBtn = document.getElementById('copyShareBtn');
     copyBtn.innerHTML = '<i class="ti ti-copy" aria-hidden="true"></i> Copy';
     setTimeout(() => { btn.innerHTML = '<i class="ti ti-scissors" aria-hidden="true"></i> Shorten'; btn.disabled = false; }, 2000);
@@ -974,6 +1032,29 @@ function checkSharedLoad() {}  // placeholder called after processRows, no-op
       });
       renderSportCards();
       document.getElementById('dashSub').textContent += ' · ' + payload.sportFilter;
+
+      // Show sport hero banner
+      const sportPeople = groupedSports[payload.sportFilter] || [];
+      const banner = document.getElementById('sportHeroBanner');
+      document.getElementById('sportHeroName').textContent = payload.sportFilter;
+      document.getElementById('sportHeroSub').textContent = 'You\'re viewing a filtered dashboard for this sport';
+      document.getElementById('sportHeroBadge').textContent = sportPeople.length + ' participant' + (sportPeople.length !== 1 ? 's' : '');
+      banner.classList.remove('hidden');
+
+      // Auto-expand the first (only) sport card and scroll to participants section
+      requestAnimationFrame(() => {
+        const firstCard = document.querySelector('.sport-body');
+        const firstChev = document.querySelector('.sport-chevron');
+        if (firstCard && !firstCard.classList.contains('open')) {
+          firstCard.classList.add('open');
+          if (firstChev) firstChev.classList.add('open');
+        }
+        // Scroll to the participants card
+        const participantsCard = document.querySelector('#sportCards')?.closest('.card');
+        if (participantsCard) {
+          setTimeout(() => participantsCard.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200);
+        }
+      });
     }
   } catch(e) {
     console.warn('Could not load shared data:', e);
