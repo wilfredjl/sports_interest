@@ -924,7 +924,9 @@ async function shortenShareUrl(btn) {
   btn.innerHTML = '<i class="ti ti-loader-2" aria-hidden="true"></i> Shortening…';
   btn.disabled = true;
   try {
-    const res = await fetch(`https://is.gd/create.php?format=simple&url=${encodeURIComponent(longUrl)}`);
+    const res = await fetch(
+    `https://v.gd/create.php?format=simple&url=${encodeURIComponent(longUrl)}`
+    );
     if (!res.ok) throw new Error('TinyURL error');
     const short = await res.text();
     inp.value = short.trim();
