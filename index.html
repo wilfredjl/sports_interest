@@ -855,7 +855,16 @@ async function decompressFromB64(b64url) {
 }
 
 async function buildShareUrl(sportFilter) {
-  const payload = { data: allData, file: currentFileName };
+  // For sport-filtered links, only encode that sport's participants — far smaller URL
+  // Also slim each person object: drop other sports, keep only needed fields
+  const data = sportFilter
+    ? allData.filter(p => p.sports.includes(sportFilter)).map(p => ({
+        rank: p.rank, name: p.name, unit: p.unit, gender: p.gender,
+        type: p.type, medical: p.medical, phone: p.phone,
+        sports: [sportFilter]
+      }))
+    : allData;
+  const payload = { data, file: currentFileName };
   if (sportFilter) payload.sportFilter = sportFilter;
   try {
     const json = JSON.stringify(payload);
@@ -964,7 +973,6 @@ function copyShareUrl(btn) {
 // Shared URL shortener — TinyURL GET API (no auth, no POST, CORS-friendly)
 // Note: TinyURL has a ~2000 char URL limit. URLs longer than that cannot be shortened.
 async function shortenUrl(longUrl) {
-  if (longUrl.length > 8000) throw new Error('URL too long for any shortener (~' + Math.round(longUrl.length/1024) + ' KB). Share the long URL directly — it works fine when pasted into a browser or messaging app.');
   const res = await fetch('https://tinyurl.com/api-create.php?url=' + encodeURIComponent(longUrl), { mode: 'cors' });
   if (!res.ok) throw new Error('TinyURL error ' + res.status);
   const short = (await res.text()).trim();
