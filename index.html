@@ -431,7 +431,7 @@ details[open] .paste-panel summary::after{transform:rotate(90deg)}
       </div>
       <div class="btn-group">
         <button class="btn" onclick="openShareModal()"><i class="ti ti-share" aria-hidden="true"></i> Share dashboard</button>
-        <button class="btn" onclick="downloadSummary()"><i class="ti ti-download" aria-hidden="true"></i> Export CSV</button>
+        <button class="btn" onclick="downloadSummary()"><i class="ti ti-download" aria-hidden="true"></i> Export by sport</button>
         <button class="btn" onclick="resetDashboard()"><i class="ti ti-refresh" aria-hidden="true"></i> New file</button>
       </div>
     </div>
@@ -913,10 +913,7 @@ async function openShareModal() {
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--border-light);gap:8px" id="row-${sid}">
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:500">${escHtml(sport)}</div>
-        <div style="font-size:11px;color:var(--text-secondary);display:flex;align-items:center;gap:6px;margin-top:2px">
-          <span>${people.length} participant${people.length!==1?'s':''}</span>
-          <span class="url-len-pill" id="pill-${sid}" style="font-size:10px;padding:1px 7px;border-radius:8px;background:var(--bg-tertiary);color:var(--text-secondary)">building…</span>
-        </div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">${people.length} participant${people.length!==1?'s':''}</div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
         <button class="btn copy-sport-btn" data-sport="${escHtml(sport)}" data-sid="${sid}"><i class="ti ti-copy" aria-hidden="true"></i> Copy link</button>
@@ -924,29 +921,17 @@ async function openShareModal() {
       </div>
     </div>`;
   }).join('');
-  // Now build each URL and update the pill + shorten button visibility
+  // Pre-build URLs and store on buttons for instant copy/shorten
   sorted.forEach(async ([sport]) => {
     const sid = 'sport-' + btoa(encodeURIComponent(sport)).replace(/[^a-zA-Z0-9]/g,'').slice(0,12);
-    const pill = document.getElementById('pill-' + sid);
-    const shortenBtn = document.querySelector(`[data-sid="${sid}"].shorten-sport-btn`);
     try {
       const url = await buildShareUrl(sport);
-      if (!url || !pill) return;
-      const len = url.length;
-      const safe = len < 800;
-      pill.textContent = safe ? `${len} chars — safe to share` : `${len} chars`;
-      pill.style.background = safe ? 'var(--green-bg)' : 'var(--amber-bg)';
-      pill.style.color = safe ? 'var(--green-text)' : 'var(--amber-text)';
-      // Store url on copy button so we don't rebuild
+      if (!url) return;
       const copyBtn = document.querySelector(`[data-sid="${sid}"].copy-sport-btn`);
+      const shortenBtn = document.querySelector(`[data-sid="${sid}"].shorten-sport-btn`);
       if (copyBtn) copyBtn.dataset.url = url;
-      if (shortenBtn) {
-        shortenBtn.dataset.url = url;
-        shortenBtn.style.display = '';
-      }
-    } catch(e) {
-      if (pill) { pill.textContent = 'error'; pill.style.color = 'var(--red-text)'; }
-    }
+      if (shortenBtn) shortenBtn.dataset.url = url;
+    } catch(e) {}
   });
 
   // attach copy listeners — use pre-built URL if ready, else build on demand
@@ -1112,11 +1097,19 @@ function checkSharedLoad() {}  // placeholder called after processRows, no-op
    EXPORTS
 ═══════════════════════════════════════════════ */
 function downloadSummary() {
-  const rows = [['Sport','Count','Participants']];
-  Object.entries(groupedSports).sort((a,b)=>b[1].length-a[1].length).forEach(([s,p]) => {
-    rows.push([s, p.length, p.map(x=>`${x.rank} ${x.name} (${x.unit})`).join(' | ')]);
+  // Full by-sport sheet: each sport gets a header block then one row per participant
+  const rows = [];
+  Object.entries(groupedSports).sort((a,b)=>b[1].length-a[1].length).forEach(([sport, people]) => {
+    // Sport header row
+    rows.push([sport, people.length + ' participant' + (people.length!==1?'s':''), '', '', '', '', '']);
+    // Column headers
+    rows.push(['Rank', 'Name', 'Unit', 'Type', 'Gender', 'Phone', 'Medical']);
+    // One row per person
+    people.forEach(p => rows.push([p.rank, p.name, p.unit, p.type, p.gender, p.phone, p.medical || 'Nil']));
+    // Blank spacer row between sports
+    rows.push(['', '', '', '', '', '', '']);
   });
-  dlCSV(rows, 'sports_summary.csv');
+  dlCSV(rows, 'sports_by_participant.csv');
 }
 
 function downloadSportRoster(sport) {
