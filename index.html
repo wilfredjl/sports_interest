@@ -960,13 +960,20 @@ function copyShareUrl(btn) {
   });
 }
 
-// Shared URL shortener — uses is.gd (free, no API key, no preview screen, CORS-friendly)
+// Shared URL shortener — uses CleanURI via corsproxy.io (no API key, no preview screen)
 async function shortenUrl(longUrl) {
-  const res = await fetch('https://is.gd/create.php?format=json&url=' + encodeURIComponent(longUrl));
-  if (!res.ok) throw new Error('is.gd error ' + res.status);
+  // CleanURI is a simple shortener with a JSON API; we route through corsproxy.io to avoid CORS
+  const apiUrl = 'https://cleanuri.com/api/v1/shorten';
+  const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(apiUrl);
+  const res = await fetch(proxyUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'url=' + encodeURIComponent(longUrl)
+  });
+  if (!res.ok) throw new Error('Shorten error ' + res.status);
   const json = await res.json();
-  const short = json?.shorturl;
-  if (!short) throw new Error(json?.errormessage || 'No shorturl in response');
+  const short = json?.result_url;
+  if (!short) throw new Error(json?.error || 'No result_url in response');
   return short;
 }
 
@@ -983,7 +990,7 @@ async function shortenShareUrl(btn) {
   try {
     const short = await shortenUrl(longUrl);
     inp.value = short.trim();
-    document.getElementById('shareUrlNote').textContent = `Shortened via is.gd. Original URL has been replaced above.`;
+    document.getElementById('shareUrlNote').textContent = `Shortened link copied. Original URL has been replaced above.`;
     btn.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Shortened';
     const copyBtn = document.getElementById('copyShareBtn');
     copyBtn.innerHTML = '<i class="ti ti-copy" aria-hidden="true"></i> Copy';
