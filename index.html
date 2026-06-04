@@ -960,17 +960,13 @@ function copyShareUrl(btn) {
   });
 }
 
-// Shared URL shortener — uses TinyURL v2 API (no preview/redirect screen)
+// Shared URL shortener — uses is.gd (free, no API key, no preview screen, CORS-friendly)
 async function shortenUrl(longUrl) {
-  const res = await fetch('https://api.tinyurl.com/create', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-    body: JSON.stringify({ url: longUrl, domain: 'tinyurl.com' })
-  });
-  if (!res.ok) throw new Error('TinyURL API error ' + res.status);
+  const res = await fetch('https://is.gd/create.php?format=json&url=' + encodeURIComponent(longUrl));
+  if (!res.ok) throw new Error('is.gd error ' + res.status);
   const json = await res.json();
-  const short = json?.data?.tiny_url;
-  if (!short) throw new Error('No tiny_url in response');
+  const short = json?.shorturl;
+  if (!short) throw new Error(json?.errormessage || 'No shorturl in response');
   return short;
 }
 
@@ -987,14 +983,14 @@ async function shortenShareUrl(btn) {
   try {
     const short = await shortenUrl(longUrl);
     inp.value = short.trim();
-    document.getElementById('shareUrlNote').textContent = `Shortened via TinyURL. Original compressed URL has been replaced above.`;
+    document.getElementById('shareUrlNote').textContent = `Shortened via is.gd. Original URL has been replaced above.`;
     btn.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Shortened';
     const copyBtn = document.getElementById('copyShareBtn');
     copyBtn.innerHTML = '<i class="ti ti-copy" aria-hidden="true"></i> Copy';
     setTimeout(() => { btn.innerHTML = '<i class="ti ti-scissors" aria-hidden="true"></i> Shorten'; btn.disabled = false; }, 2000);
   } catch(e) {
     btn.innerHTML = '<i class="ti ti-alert-triangle" aria-hidden="true"></i> Failed';
-    document.getElementById('shareUrlNote').textContent = 'Could not reach TinyURL. Copy the long URL instead.';
+    document.getElementById('shareUrlNote').textContent = 'Could not shorten the URL. Copy the long URL instead.';
     setTimeout(() => { btn.innerHTML = '<i class="ti ti-scissors" aria-hidden="true"></i> Shorten'; btn.disabled = false; }, 2500);
   }
 }
