@@ -507,12 +507,6 @@ details[open] .paste-panel summary::after{transform:rotate(90deg)}
       <button class="modal-close-btn" onclick="event.stopPropagation();closeShareModal()" aria-label="Close"><i class="ti ti-x" aria-hidden="true"></i></button>
     </div>
 
-    <div id="tinyurlKeyRow" style="display:flex;gap:8px;align-items:center;margin-bottom:12px;padding:10px 12px;background:var(--bg-secondary);border-radius:var(--radius-md);border:0.5px solid var(--border-light)">
-      <i class="ti ti-key" style="font-size:14px;color:var(--text-secondary);flex-shrink:0" aria-hidden="true"></i>
-      <input id="tinyurlKeyInput" type="password" placeholder="Paste TinyURL API key to enable shortening…" style="flex:1;font-size:12px;padding:4px 8px;border:0.5px solid var(--border-med);border-radius:var(--radius-md);background:var(--bg-primary);color:var(--text-primary);font-family:monospace" oninput="saveTinyUrlKey(this.value)">
-      <a href="https://tinyurl.com/app/dev" target="_blank" class="btn" style="font-size:11px;padding:4px 10px;flex-shrink:0">Get key</a>
-    </div>
-
     <div class="modal-tabs">
       <button class="modal-tab active" onclick="switchShareTab('link',this)">Share link</button>
       <button class="modal-tab" onclick="switchShareTab('bysport',this)">By sport</button>
@@ -886,7 +880,7 @@ function updateShareUrlNote(url) {
   const shortenBtn = document.getElementById('shortenBtn');
   if (safe) {
     noteEl.innerHTML = `<span style="color:var(--green-text)"><i class="ti ti-circle-check" style="vertical-align:-2px"></i> ${len} characters — short enough to share directly. No shortening needed.</span>`;
-    if (shortenBtn) shortenBtn.style.display = 'none';
+    if (shortenBtn) shortenBtn.style.display = '';
   } else {
     noteEl.textContent = `${len} characters. Paste into any browser or messaging app, or shorten it.`;
     if (shortenBtn) shortenBtn.style.display = '';
@@ -895,10 +889,6 @@ function updateShareUrlNote(url) {
 
 async function openShareModal() {
   const inp = document.getElementById('shareUrlInput');
-  // Pre-fill API key input if saved
-  const savedKey = loadTinyUrlKey();
-  const keyInput = document.getElementById('tinyurlKeyInput');
-  if (keyInput && savedKey) keyInput.value = savedKey;
   inp.value = 'Generating link…';
   document.getElementById('shareUrlNote').textContent = '';
   document.getElementById('copyShareBtn').innerHTML = '<i class="ti ti-copy" aria-hidden="true"></i> Copy';
@@ -952,7 +942,7 @@ async function openShareModal() {
       if (copyBtn) copyBtn.dataset.url = url;
       if (shortenBtn) {
         shortenBtn.dataset.url = url;
-        shortenBtn.style.display = safe ? 'none' : '';
+        shortenBtn.style.display = '';
       }
     } catch(e) {
       if (pill) { pill.textContent = 'error'; pill.style.color = 'var(--red-text)'; }
@@ -1023,28 +1013,11 @@ function copyShareUrl(btn) {
 }
 
 // Shared URL shortener — TinyURL v2 API with user-supplied key (no preview screen)
-function saveTinyUrlKey(val) {
-  try { localStorage.setItem('tinyurl_api_key', val.trim()); } catch(e) {}
-}
-function loadTinyUrlKey() {
-  try { return localStorage.getItem('tinyurl_api_key') || ''; } catch(e) { return ''; }
-}
-
 async function shortenUrl(longUrl) {
-  const apiKey = loadTinyUrlKey();
-  if (!apiKey) throw new Error('No API key set. Paste your TinyURL API key in the share dialog.');
-  const res = await fetch('https://api.tinyurl.com/create', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + apiKey
-    },
-    body: JSON.stringify({ url: longUrl, domain: 'tinyurl.com' })
-  });
-  if (!res.ok) throw new Error('TinyURL API error ' + res.status);
-  const json = await res.json();
-  const short = json?.data?.tiny_url;
-  if (!short) throw new Error(json?.errors?.[0] || 'No tiny_url in response');
+  const res = await fetch('https://tinyurl.com/api-create.php?url=' + encodeURIComponent(longUrl));
+  if (!res.ok) throw new Error('TinyURL error ' + res.status);
+  const short = (await res.text()).trim();
+  if (!short.startsWith('http')) throw new Error('Bad response from TinyURL');
   return short;
 }
 
