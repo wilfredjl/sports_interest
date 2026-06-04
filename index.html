@@ -918,7 +918,7 @@ async function openShareModal() {
       <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
         <button class="btn copy-sport-btn" data-sport="${escHtml(sport)}" data-sid="${sid}"><i class="ti ti-copy" aria-hidden="true"></i> Copy link</button>
         <button class="btn shorten-sport-btn" data-sport="${escHtml(sport)}" data-sid="${sid}"><i class="ti ti-scissors" aria-hidden="true"></i> Shorten</button>
-        <button class="btn" onclick="downloadSportCsv(${JSON.stringify(escHtml(sport))})"><i class="ti ti-download" aria-hidden="true"></i> Export</button>
+        <button class="btn" onclick="downloadSportCsv(${JSON.stringify(sport)})"><i class="ti ti-download" aria-hidden="true"></i> Export</button>
       </div>
     </div>`;
   }).join('');
