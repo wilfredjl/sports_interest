@@ -918,7 +918,7 @@ async function openShareModal() {
       <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
         <button class="btn copy-sport-btn" data-sport="${escHtml(sport)}" data-sid="${sid}"><i class="ti ti-copy" aria-hidden="true"></i> Copy link</button>
         <button class="btn shorten-sport-btn" data-sport="${escHtml(sport)}" data-sid="${sid}"><i class="ti ti-scissors" aria-hidden="true"></i> Shorten</button>
-        <button class="btn" onclick="downloadSportCsv(${JSON.stringify(sport)})"><i class="ti ti-download" aria-hidden="true"></i> Export</button>
+        <button class="btn dl-sport-btn" data-sport="${escHtml(sport)}"><i class="ti ti-download" aria-hidden="true"></i> Export</button>
       </div>
     </div>`;
   }).join('');
@@ -976,6 +976,14 @@ async function openShareModal() {
       }
     });
   });
+  // attach download listeners
+  document.querySelectorAll('.dl-sport-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      downloadSportCsv(this.getAttribute('data-sport'));
+    });
+  });
+
   document.getElementById('shareModal').classList.remove('hidden');
 }
 
@@ -1120,6 +1128,10 @@ function downloadSportRoster(sport) {
 }
 
 function downloadSportCsv(sport) {
+  // unescape HTML entities that escHtml may have added to the data-sport attribute
+  const tmp = document.createElement('textarea');
+  tmp.innerHTML = sport;
+  sport = tmp.value;
   const people = groupedSports[sport] || [];
   const rows = [];
   // Sport header
