@@ -915,9 +915,10 @@ async function openShareModal() {
         <div style="font-size:13px;font-weight:500">${escHtml(sport)}</div>
         <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">${people.length} participant${people.length!==1?'s':''}</div>
       </div>
-      <div style="display:flex;gap:6px;flex-shrink:0">
+      <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
         <button class="btn copy-sport-btn" data-sport="${escHtml(sport)}" data-sid="${sid}"><i class="ti ti-copy" aria-hidden="true"></i> Copy link</button>
-        <button class="btn shorten-sport-btn" data-sport="${escHtml(sport)}" data-sid="${sid}" style="display:none"><i class="ti ti-scissors" aria-hidden="true"></i> Shorten</button>
+        <button class="btn shorten-sport-btn" data-sport="${escHtml(sport)}" data-sid="${sid}"><i class="ti ti-scissors" aria-hidden="true"></i> Shorten</button>
+        <button class="btn" onclick="downloadSportCsv(${JSON.stringify(escHtml(sport))})"><i class="ti ti-download" aria-hidden="true"></i> Export</button>
       </div>
     </div>`;
   }).join('');
@@ -1116,6 +1117,18 @@ function downloadSportRoster(sport) {
   const rows = [['Rank','Name','Unit','Type','Phone','Medical']];
   (groupedSports[sport]||[]).forEach(p => rows.push([p.rank,p.name,p.unit,p.type,p.phone,p.medical]));
   dlCSV(rows, sport.replace(/[^a-z0-9]/gi,'_')+'_roster.csv');
+}
+
+function downloadSportCsv(sport) {
+  const people = groupedSports[sport] || [];
+  const rows = [];
+  // Sport header
+  rows.push([sport, people.length + ' participant' + (people.length!==1?'s':''), '', '', '', '', '']);
+  // Column headers
+  rows.push(['Rank','Name','Unit','Type','Gender','Phone','Medical']);
+  // Participants
+  people.forEach(p => rows.push([p.rank, p.name, p.unit, p.type, p.gender, p.phone, p.medical || 'Nil']));
+  dlCSV(rows, sport.replace(/[^a-z0-9]/gi,'_')+'_export.csv');
 }
 
 function dlCSV(rows, name) {
