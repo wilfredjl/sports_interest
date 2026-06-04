@@ -431,7 +431,7 @@ details[open] .paste-panel summary::after{transform:rotate(90deg)}
       </div>
       <div class="btn-group">
         <button class="btn" onclick="openShareModal()"><i class="ti ti-share" aria-hidden="true"></i> Share dashboard</button>
-        <button class="btn" onclick="downloadSummary()"><i class="ti ti-download" aria-hidden="true"></i> Export by sport</button>
+        <button class="btn" onclick="downloadSummary()"><i class="ti ti-download" aria-hidden="true"></i> Export all sports</button>
         <button class="btn" onclick="resetDashboard()"><i class="ti ti-refresh" aria-hidden="true"></i> New file</button>
       </div>
     </div>
@@ -908,7 +908,7 @@ async function openShareModal() {
   // build convenor list — pre-build all URLs so we can show length indicators
   const sorted = Object.entries(groupedSports).sort((a,b)=>b[1].length-a[1].length);
   // Render placeholder rows first so modal feels instant
-  document.getElementById('convenorList').innerHTML = sorted.map(([sport, people]) => {
+  document.getElementById('convenorList').innerHTML = sorted.map(([sport, people], idx) => {
     const sid = 'sport-' + btoa(encodeURIComponent(sport)).replace(/[^a-zA-Z0-9]/g,'').slice(0,12);
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--border-light);gap:8px" id="row-${sid}">
       <div style="flex:1;min-width:0">
@@ -918,7 +918,7 @@ async function openShareModal() {
       <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
         <button class="btn copy-sport-btn" data-sport="${escHtml(sport)}" data-sid="${sid}"><i class="ti ti-copy" aria-hidden="true"></i> Copy link</button>
         <button class="btn shorten-sport-btn" data-sport="${escHtml(sport)}" data-sid="${sid}"><i class="ti ti-scissors" aria-hidden="true"></i> Shorten</button>
-        <button class="btn dl-sport-btn" data-sport="${escHtml(sport)}"><i class="ti ti-download" aria-hidden="true"></i> Export</button>
+        <button class="btn dl-sport-btn" data-idx="${idx}"><i class="ti ti-download" aria-hidden="true"></i> Export</button>
       </div>
     </div>`;
   }).join('');
@@ -976,11 +976,13 @@ async function openShareModal() {
       }
     });
   });
-  // attach download listeners
+  // attach download listeners — use idx to look up raw sport name, no escaping issues
+  const sortedSportNames = sorted.map(([s]) => s);
   document.querySelectorAll('.dl-sport-btn').forEach(btn => {
     btn.addEventListener('click', function(e) {
       e.stopPropagation();
-      downloadSportCsv(this.getAttribute('data-sport'));
+      const sport = sortedSportNames[parseInt(this.getAttribute('data-idx'))];
+      downloadSportCsv(sport);
     });
   });
 
@@ -1128,10 +1130,6 @@ function downloadSportRoster(sport) {
 }
 
 function downloadSportCsv(sport) {
-  // unescape HTML entities that escHtml may have added to the data-sport attribute
-  const tmp = document.createElement('textarea');
-  tmp.innerHTML = sport;
-  sport = tmp.value;
   const people = groupedSports[sport] || [];
   const rows = [];
   // Sport header
@@ -1145,9 +1143,11 @@ function downloadSportCsv(sport) {
 
 function dlCSV(rows, name) {
   const csv = rows.map(r=>r.map(c=>`"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
-  a.download = name; a.click();
+  a.href = url; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function resetDashboard() {
