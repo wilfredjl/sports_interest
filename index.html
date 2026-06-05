@@ -854,9 +854,57 @@ async function decompressFromB64(b64url) {
   return new TextDecoder().decode(decompressed);
 }
 
+// ── V2 compact payload ────────────────────────────────────────────────────
+// Stores each person as a flat array + a shared sport-name index list.
+// ~40 % smaller than the v1 object-per-row format before compression,
+// which further reduces the final base64url string length.
+
+function packPayload(data, file, sportFilter) {
+  // Build a deduplicated, sorted list of all sport names
+  const sportsSet = new Set();
+  data.forEach(p => p.sports.forEach(s => sportsSet.add(s)));
+  const sportsList = [...sportsSet].sort();
+  const sportIdx   = Object.fromEntries(sportsList.map((s, i) => [s, i]));
+
+  // Each person becomes a compact array; sport memberships become index refs
+  const packed = data.map(p => [
+    p.rank, p.name, p.unit, p.gender, p.type, p.medical, p.phone,
+    p.sports.map(sp => sportIdx[sp])
+  ]);
+
+  const payload = { v: 2, sp: sportsList, d: packed, f: file };
+  if (sportFilter) payload.sf = sportFilter;
+  return payload;
+}
+
+function unpackPayload(raw) {
+  if (raw.v === 2) {
+    const sp = raw.sp || [];
+    return {
+      data: (raw.d || []).map(row => ({
+        rank:    row[0] || '',
+        name:    row[1] || '',
+        unit:    row[2] || '',
+        gender:  row[3] || '',
+        type:    row[4] || '',
+        medical: row[5] || '',
+        phone:   row[6] || '',
+        sports:  (row[7] || []).map(i => sp[i])
+      })),
+      file:        raw.f        || '',
+      sportFilter: raw.sf       || null
+    };
+  }
+  // Legacy v1 format — full backward compatibility
+  return {
+    data:        raw.data        || [],
+    file:        raw.file        || '',
+    sportFilter: raw.sportFilter || null
+  };
+}
+
 async function buildShareUrl(sportFilter) {
-  // For sport-filtered links, only encode that sport's participants — far smaller URL
-  // Also slim each person object: drop other sports, keep only needed fields
+  // For sport links: only include participants for that sport — far smaller payload
   const data = sportFilter
     ? allData.filter(p => p.sports.includes(sportFilter)).map(p => ({
         rank: p.rank, name: p.name, unit: p.unit, gender: p.gender,
@@ -864,11 +912,10 @@ async function buildShareUrl(sportFilter) {
         sports: [sportFilter]
       }))
     : allData;
-  const payload = { data, file: currentFileName };
-  if (sportFilter) payload.sportFilter = sportFilter;
   try {
-    const json = JSON.stringify(payload);
-    const b64 = await compressToB64(json);
+    const payload = packPayload(data, currentFileName, sportFilter);
+    const json    = JSON.stringify(payload);
+    const b64     = await compressToB64(json);
     return location.href.split('#')[0].split('?')[0] + '?d=' + b64 + '&c=1';
   } catch(e) { return null; }
 }
@@ -1008,20 +1055,33 @@ function copyShareUrl(btn) {
   });
 }
 
-// Shared URL shortener — TinyURL v2 API with user-supplied key (no preview screen)
+// is.gd shortener — free, no registration, no redirect countdown page.
+// Uses POST so it can handle very long data URLs (no query-string length limit).
+// Falls back to v.gd (same backend, different domain) if the first call fails.
 async function shortenUrl(longUrl) {
-  const res = await fetch('https://tinyurl.com/api-create.php?url=' + encodeURIComponent(longUrl));
-  if (!res.ok) throw new Error('TinyURL error ' + res.status);
-  const short = (await res.text()).trim();
-  if (!short.startsWith('http')) throw new Error('Bad response from TinyURL');
-  return short;
+  const body = 'format=simple&url=' + encodeURIComponent(longUrl);
+  let lastErr;
+  for (const host of ['https://is.gd/create.php', 'https://v.gd/create.php']) {
+    try {
+      const res = await fetch(host, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body
+      });
+      if (!res.ok) throw new Error(host + ' returned HTTP ' + res.status);
+      const text = (await res.text()).trim();
+      if (text.startsWith('http')) return text;
+      throw new Error(text); // is.gd returns "Error: ..." on invalid input
+    } catch(e) { lastErr = e; }
+  }
+  throw lastErr || new Error('Could not shorten URL');
 }
 
 async function shortenShareUrl(btn) {
   const inp = document.getElementById('shareUrlInput');
   const longUrl = inp.value;
   if (!longUrl || longUrl === 'Generating link…' || longUrl === '(error)') return;
-  if (longUrl.includes('tinyurl.com')) {
+  if (longUrl.includes('is.gd') || longUrl.includes('v.gd') || longUrl.includes('tinyurl.com')) {
     navigator.clipboard.writeText(longUrl);
     return;
   }
@@ -1062,8 +1122,9 @@ function checkSharedLoad() {}  // placeholder called after processRows, no-op
       // Legacy plain base64 format
       json = decodeURIComponent(escape(atob(decodeURIComponent(d))));
     }
-    const payload = JSON.parse(json);
-    allData = payload.data || [];
+    const raw     = JSON.parse(json);
+    const payload = unpackPayload(raw);   // handles both v1 and v2 formats
+    allData = payload.data;
     currentFileName = payload.file || 'Shared dashboard';
     buildGrouped();
     renderDashboard();
