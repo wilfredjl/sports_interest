@@ -421,7 +421,12 @@ details[open] .paste-panel summary::after{transform:rotate(90deg)}
         <div class="sport-hero-name" id="sportHeroName"></div>
         <div class="sport-hero-sub" id="sportHeroSub"></div>
       </div>
-      <div class="sport-hero-badge" id="sportHeroBadge"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-left:auto;flex-wrap:wrap">
+        <div class="sport-hero-badge" id="sportHeroBadge"></div>
+        <button class="btn" id="clearSportFilterBtn" onclick="clearSharedSportFilter()" title="View all sports in this dataset" style="white-space:nowrap">
+          <i class="ti ti-layout-list" aria-hidden="true"></i> Show all sports
+        </button>
+      </div>
     </div>
 
     <div class="action-row">
@@ -855,15 +860,9 @@ async function decompressFromB64(b64url) {
 }
 
 async function buildShareUrl(sportFilter) {
-  // For sport-filtered links, only encode that sport's participants — far smaller URL
-  // Also slim each person object: drop other sports, keep only needed fields
-  const data = sportFilter
-    ? allData.filter(p => p.sports.includes(sportFilter)).map(p => ({
-        rank: p.rank, name: p.name, unit: p.unit, gender: p.gender,
-        type: p.type, medical: p.medical, phone: p.phone,
-        sports: [sportFilter]
-      }))
-    : allData;
+  // Always encode the full dataset so recipients can unfilter at any time.
+  // sportFilter is stored as a hint to pre-select the view on load.
+  const data = allData;
   const payload = { data, file: currentFileName };
   if (sportFilter) payload.sportFilter = sportFilter;
   try {
@@ -1049,6 +1048,24 @@ async function shortenShareUrl(btn) {
 ═══════════════════════════════════════════════ */
 function checkSharedLoad() {}  // placeholder called after processRows, no-op
 
+/* Clear the sport pre-filter applied by a shared link — reveals the full dataset */
+function clearSharedSportFilter() {
+  activeSportFilter = 'all';
+  // Update filter tabs
+  document.querySelectorAll('.sport-filter-tab').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-sport') === 'all');
+  });
+  renderSportCards();
+  // Update the banner to reflect expanded state
+  const banner = document.getElementById('sportHeroBanner');
+  const btn = document.getElementById('clearSportFilterBtn');
+  document.getElementById('sportHeroSub').textContent = 'Showing all sports · click a sport tab below to re-filter';
+  if (btn) btn.style.display = 'none';
+  // Update dashSub
+  const sub = document.getElementById('dashSub');
+  if (sub) sub.textContent = allData.length + ' respondents · ' + Object.keys(groupedSports).length + ' sports';
+}
+
 (async function initSharedLoad() {
   const params = new URLSearchParams(location.search);
   const d = params.get('d');
@@ -1080,8 +1097,8 @@ function checkSharedLoad() {}  // placeholder called after processRows, no-op
       const sportPeople = groupedSports[payload.sportFilter] || [];
       const banner = document.getElementById('sportHeroBanner');
       document.getElementById('sportHeroName').textContent = payload.sportFilter;
-      document.getElementById('sportHeroSub').textContent = 'You\'re viewing a filtered dashboard for this sport';
-      document.getElementById('sportHeroBadge').textContent = sportPeople.length + ' participant' + (sportPeople.length !== 1 ? 's' : '');
+      document.getElementById('sportHeroSub').textContent = 'Filtered view · full dataset included — click "Show all sports" to expand';
+      document.getElementById('sportHeroBadge').textContent = sportPeople.length + ' participant' + (sportPeople.length !== 1 ? 's' : '') + ' in this sport';
       banner.classList.remove('hidden');
 
       // Auto-expand the first (only) sport card and scroll to participants section
