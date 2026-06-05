@@ -518,7 +518,7 @@ details[open] .paste-panel summary::after{transform:rotate(90deg)}
       <div class="share-url-box">
         <input type="text" id="shareUrlInput" readonly>
         <button class="btn btn-primary" id="copyShareBtn" onclick="copyShareUrl(this)"><i class="ti ti-copy" aria-hidden="true"></i> Copy</button>
-        <button class="btn" id="shortenBtn" onclick="shortenShareUrl(this)"><i class="ti ti-scissors" aria-hidden="true"></i> Shorten via Bitly ↗</button>
+        <button class="btn" id="shortenBtn" onclick="shortenShareUrl(this)"><i class="ti ti-scissors" aria-hidden="true"></i> Shorten</button>
       </div>
       <div class="share-note" id="shareUrlNote"></div>
     </div>
@@ -854,57 +854,9 @@ async function decompressFromB64(b64url) {
   return new TextDecoder().decode(decompressed);
 }
 
-// ── V2 compact payload ────────────────────────────────────────────────────
-// Stores each person as a flat array + a shared sport-name index list.
-// ~40 % smaller than the v1 object-per-row format before compression,
-// which further reduces the final base64url string length.
-
-function packPayload(data, file, sportFilter) {
-  // Build a deduplicated, sorted list of all sport names
-  const sportsSet = new Set();
-  data.forEach(p => p.sports.forEach(s => sportsSet.add(s)));
-  const sportsList = [...sportsSet].sort();
-  const sportIdx   = Object.fromEntries(sportsList.map((s, i) => [s, i]));
-
-  // Each person becomes a compact array; sport memberships become index refs
-  const packed = data.map(p => [
-    p.rank, p.name, p.unit, p.gender, p.type, p.medical, p.phone,
-    p.sports.map(sp => sportIdx[sp])
-  ]);
-
-  const payload = { v: 2, sp: sportsList, d: packed, f: file };
-  if (sportFilter) payload.sf = sportFilter;
-  return payload;
-}
-
-function unpackPayload(raw) {
-  if (raw.v === 2) {
-    const sp = raw.sp || [];
-    return {
-      data: (raw.d || []).map(row => ({
-        rank:    row[0] || '',
-        name:    row[1] || '',
-        unit:    row[2] || '',
-        gender:  row[3] || '',
-        type:    row[4] || '',
-        medical: row[5] || '',
-        phone:   row[6] || '',
-        sports:  (row[7] || []).map(i => sp[i])
-      })),
-      file:        raw.f        || '',
-      sportFilter: raw.sf       || null
-    };
-  }
-  // Legacy v1 format — full backward compatibility
-  return {
-    data:        raw.data        || [],
-    file:        raw.file        || '',
-    sportFilter: raw.sportFilter || null
-  };
-}
-
 async function buildShareUrl(sportFilter) {
-  // For sport links: only include participants for that sport — far smaller payload
+  // For sport-filtered links, only encode that sport's participants — far smaller URL
+  // Also slim each person object: drop other sports, keep only needed fields
   const data = sportFilter
     ? allData.filter(p => p.sports.includes(sportFilter)).map(p => ({
         rank: p.rank, name: p.name, unit: p.unit, gender: p.gender,
@@ -912,10 +864,11 @@ async function buildShareUrl(sportFilter) {
         sports: [sportFilter]
       }))
     : allData;
+  const payload = { data, file: currentFileName };
+  if (sportFilter) payload.sportFilter = sportFilter;
   try {
-    const payload = packPayload(data, currentFileName, sportFilter);
-    const json    = JSON.stringify(payload);
-    const b64     = await compressToB64(json);
+    const json = JSON.stringify(payload);
+    const b64 = await compressToB64(json);
     return location.href.split('#')[0].split('?')[0] + '?d=' + b64 + '&c=1';
   } catch(e) { return null; }
 }
@@ -964,7 +917,7 @@ async function openShareModal() {
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
         <button class="btn copy-sport-btn" data-sport="${escHtml(sport)}" data-sid="${sid}"><i class="ti ti-copy" aria-hidden="true"></i> Copy link</button>
-        <button class="btn shorten-sport-btn" data-sport="${escHtml(sport)}" data-sid="${sid}"><i class="ti ti-scissors" aria-hidden="true"></i> Shorten ↗</button>
+        <button class="btn shorten-sport-btn" data-sport="${escHtml(sport)}" data-sid="${sid}"><i class="ti ti-scissors" aria-hidden="true"></i> Shorten</button>
         <button class="btn dl-sport-btn" data-idx="${idx}"><i class="ti ti-download" aria-hidden="true"></i> Export</button>
       </div>
     </div>`;
@@ -1001,16 +954,26 @@ async function openShareModal() {
     });
   });
 
-  // attach shorten listeners (per-sport) — copy URL then open Bitly
+  // attach shorten listeners (per-sport)
   document.querySelectorAll('.shorten-sport-btn').forEach(btn => {
     btn.addEventListener('click', async function() {
       const btnEl = this;
+      btnEl.innerHTML = '<i class="ti ti-loader-2" aria-hidden="true"></i> Shortening…';
       btnEl.disabled = true;
       const longUrl = btnEl.dataset.url || await buildShareUrl(btnEl.getAttribute('data-sport'));
-      if (!longUrl) { alert('Could not generate URL.'); btnEl.disabled = false; return; }
-      await openBitlyWithUrl(longUrl);
-      btnEl.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Copied!';
-      setTimeout(() => { btnEl.innerHTML = '<i class="ti ti-scissors" aria-hidden="true"></i> Shorten ↗'; btnEl.disabled = false; }, 2500);
+      if (!longUrl) { alert('Could not generate URL.'); btnEl.innerHTML = '<i class="ti ti-scissors" aria-hidden="true"></i> Shorten'; btnEl.disabled = false; return; }
+      try {
+        const short = await shortenUrl(longUrl);
+        navigator.clipboard.writeText(short).then(() => {
+          btnEl.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Copied short!';
+          setTimeout(() => { btnEl.innerHTML = '<i class="ti ti-scissors" aria-hidden="true"></i> Shorten'; btnEl.disabled = false; }, 2500);
+        });
+      } catch(e) {
+        navigator.clipboard.writeText(longUrl);
+        btnEl.title = e.message || 'Shortening failed';
+        btnEl.innerHTML = '<i class="ti ti-alert-triangle" aria-hidden="true"></i> Failed — long URL copied';
+        setTimeout(() => { btnEl.innerHTML = '<i class="ti ti-scissors" aria-hidden="true"></i> Shorten'; btnEl.disabled = false; }, 2500);
+      }
     });
   });
   // attach download listeners — use idx to look up raw sport name, no escaping issues
@@ -1045,23 +1008,38 @@ function copyShareUrl(btn) {
   });
 }
 
-// No external shortener APIs are needed.
-// We copy the URL to clipboard and open Bitly so the user can paste it in once.
-// Bitly links have no redirect countdown page for recipients.
-async function openBitlyWithUrl(longUrl) {
-  await navigator.clipboard.writeText(longUrl);
-  window.open('https://bitly.com', '_blank');
+// Shared URL shortener — TinyURL v2 API with user-supplied key (no preview screen)
+async function shortenUrl(longUrl) {
+  const res = await fetch('https://tinyurl.com/api-create.php?url=' + encodeURIComponent(longUrl));
+  if (!res.ok) throw new Error('TinyURL error ' + res.status);
+  const short = (await res.text()).trim();
+  if (!short.startsWith('http')) throw new Error('Bad response from TinyURL');
+  return short;
 }
 
 async function shortenShareUrl(btn) {
   const inp = document.getElementById('shareUrlInput');
   const longUrl = inp.value;
   if (!longUrl || longUrl === 'Generating link…' || longUrl === '(error)') return;
-  await openBitlyWithUrl(longUrl);
-  document.getElementById('shareUrlNote').innerHTML =
-    '<span style="color:var(--green-text)"><i class="ti ti-circle-check" style="vertical-align:-2px"></i> Link copied! Paste it into Bitly (just opened) to get a short link.</span>';
-  btn.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Copied';
-  setTimeout(() => { btn.innerHTML = '<i class="ti ti-scissors" aria-hidden="true"></i> Shorten via Bitly ↗'; }, 2500);
+  if (longUrl.includes('tinyurl.com')) {
+    navigator.clipboard.writeText(longUrl);
+    return;
+  }
+  btn.innerHTML = '<i class="ti ti-loader-2" aria-hidden="true"></i> Shortening…';
+  btn.disabled = true;
+  try {
+    const short = await shortenUrl(longUrl);
+    inp.value = short.trim();
+    document.getElementById('shareUrlNote').innerHTML = '<span style="color:var(--green-text)"><i class="ti ti-circle-check" style="vertical-align:-2px"></i> Shortened! Link replaced above.</span>';
+    btn.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Shortened';
+    const copyBtn = document.getElementById('copyShareBtn');
+    copyBtn.innerHTML = '<i class="ti ti-copy" aria-hidden="true"></i> Copy';
+    setTimeout(() => { btn.innerHTML = '<i class="ti ti-scissors" aria-hidden="true"></i> Shorten'; btn.disabled = false; }, 2000);
+  } catch(e) {
+    btn.innerHTML = '<i class="ti ti-alert-triangle" aria-hidden="true"></i> Failed';
+    document.getElementById('shareUrlNote').textContent = e.message || 'Could not shorten the URL. Copy the long URL instead.';
+    setTimeout(() => { btn.innerHTML = '<i class="ti ti-scissors" aria-hidden="true"></i> Shorten'; btn.disabled = false; }, 2500);
+  }
 }
 
 
@@ -1084,9 +1062,8 @@ function checkSharedLoad() {}  // placeholder called after processRows, no-op
       // Legacy plain base64 format
       json = decodeURIComponent(escape(atob(decodeURIComponent(d))));
     }
-    const raw     = JSON.parse(json);
-    const payload = unpackPayload(raw);   // handles both v1 and v2 formats
-    allData = payload.data;
+    const payload = JSON.parse(json);
+    allData = payload.data || [];
     currentFileName = payload.file || 'Shared dashboard';
     buildGrouped();
     renderDashboard();
