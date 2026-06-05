@@ -518,7 +518,7 @@ details[open] .paste-panel summary::after{transform:rotate(90deg)}
       <div class="share-url-box">
         <input type="text" id="shareUrlInput" readonly>
         <button class="btn btn-primary" id="copyShareBtn" onclick="copyShareUrl(this)"><i class="ti ti-copy" aria-hidden="true"></i> Copy</button>
-        <button class="btn" id="shortenBtn" onclick="shortenShareUrl(this)"><i class="ti ti-scissors" aria-hidden="true"></i> Shorten</button>
+        <button class="btn" id="shortenBtn" onclick="shortenShareUrl(this)"><i class="ti ti-scissors" aria-hidden="true"></i> Shorten via Bitly ↗</button>
       </div>
       <div class="share-note" id="shareUrlNote"></div>
     </div>
@@ -964,7 +964,7 @@ async function openShareModal() {
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
         <button class="btn copy-sport-btn" data-sport="${escHtml(sport)}" data-sid="${sid}"><i class="ti ti-copy" aria-hidden="true"></i> Copy link</button>
-        <button class="btn shorten-sport-btn" data-sport="${escHtml(sport)}" data-sid="${sid}"><i class="ti ti-scissors" aria-hidden="true"></i> Shorten</button>
+        <button class="btn shorten-sport-btn" data-sport="${escHtml(sport)}" data-sid="${sid}"><i class="ti ti-scissors" aria-hidden="true"></i> Shorten ↗</button>
         <button class="btn dl-sport-btn" data-idx="${idx}"><i class="ti ti-download" aria-hidden="true"></i> Export</button>
       </div>
     </div>`;
@@ -1001,26 +1001,16 @@ async function openShareModal() {
     });
   });
 
-  // attach shorten listeners (per-sport)
+  // attach shorten listeners (per-sport) — copy URL then open Bitly
   document.querySelectorAll('.shorten-sport-btn').forEach(btn => {
     btn.addEventListener('click', async function() {
       const btnEl = this;
-      btnEl.innerHTML = '<i class="ti ti-loader-2" aria-hidden="true"></i> Shortening…';
       btnEl.disabled = true;
       const longUrl = btnEl.dataset.url || await buildShareUrl(btnEl.getAttribute('data-sport'));
-      if (!longUrl) { alert('Could not generate URL.'); btnEl.innerHTML = '<i class="ti ti-scissors" aria-hidden="true"></i> Shorten'; btnEl.disabled = false; return; }
-      try {
-        const short = await shortenUrl(longUrl);
-        navigator.clipboard.writeText(short).then(() => {
-          btnEl.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Copied short!';
-          setTimeout(() => { btnEl.innerHTML = '<i class="ti ti-scissors" aria-hidden="true"></i> Shorten'; btnEl.disabled = false; }, 2500);
-        });
-      } catch(e) {
-        navigator.clipboard.writeText(longUrl);
-        btnEl.title = e.message || 'Shortening failed';
-        btnEl.innerHTML = '<i class="ti ti-alert-triangle" aria-hidden="true"></i> Failed — long URL copied';
-        setTimeout(() => { btnEl.innerHTML = '<i class="ti ti-scissors" aria-hidden="true"></i> Shorten'; btnEl.disabled = false; }, 2500);
-      }
+      if (!longUrl) { alert('Could not generate URL.'); btnEl.disabled = false; return; }
+      await openBitlyWithUrl(longUrl);
+      btnEl.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Copied!';
+      setTimeout(() => { btnEl.innerHTML = '<i class="ti ti-scissors" aria-hidden="true"></i> Shorten ↗'; btnEl.disabled = false; }, 2500);
     });
   });
   // attach download listeners — use idx to look up raw sport name, no escaping issues
@@ -1055,67 +1045,23 @@ function copyShareUrl(btn) {
   });
 }
 
-// URL shortener — free, no registration, no redirect countdown page.
-//
-// is.gd works perfectly but lacks CORS headers, so we route it through
-// corsproxy.io which injects Access-Control-Allow-Origin: * for us.
-// cleanuri.com is used as a second fallback (has native CORS support).
-async function shortenUrl(longUrl) {
-  // ── Attempt 1: is.gd via corsproxy.io ────────────────────────────────
-  try {
-    const res = await fetch(
-      'https://corsproxy.io/?' + encodeURIComponent('https://is.gd/create.php'),
-      {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body:    'format=simple&url=' + encodeURIComponent(longUrl)
-      }
-    );
-    if (res.ok) {
-      const text = (await res.text()).trim();
-      if (text.startsWith('http')) return text;
-    }
-  } catch(_) {}
-
-  // ── Attempt 2: cleanuri.com (native CORS support) ─────────────────────
-  try {
-    const res = await fetch('https://cleanuri.com/api/v1/shorten', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body:    'url=' + encodeURIComponent(longUrl)
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.result_url) return data.result_url;
-    }
-  } catch(_) {}
-
-  throw new Error('URL shortening is unavailable on this network. Use the Copy button to copy the full link instead.');
+// No external shortener APIs are needed.
+// We copy the URL to clipboard and open Bitly so the user can paste it in once.
+// Bitly links have no redirect countdown page for recipients.
+async function openBitlyWithUrl(longUrl) {
+  await navigator.clipboard.writeText(longUrl);
+  window.open('https://bitly.com', '_blank');
 }
 
 async function shortenShareUrl(btn) {
   const inp = document.getElementById('shareUrlInput');
   const longUrl = inp.value;
   if (!longUrl || longUrl === 'Generating link…' || longUrl === '(error)') return;
-  if (longUrl.includes('is.gd') || longUrl.includes('cleanuri.com') || longUrl.includes('tinyurl.com')) {
-    navigator.clipboard.writeText(longUrl);
-    return;
-  }
-  btn.innerHTML = '<i class="ti ti-loader-2" aria-hidden="true"></i> Shortening…';
-  btn.disabled = true;
-  try {
-    const short = await shortenUrl(longUrl);
-    inp.value = short.trim();
-    document.getElementById('shareUrlNote').innerHTML = '<span style="color:var(--green-text)"><i class="ti ti-circle-check" style="vertical-align:-2px"></i> Shortened! Link replaced above.</span>';
-    btn.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Shortened';
-    const copyBtn = document.getElementById('copyShareBtn');
-    copyBtn.innerHTML = '<i class="ti ti-copy" aria-hidden="true"></i> Copy';
-    setTimeout(() => { btn.innerHTML = '<i class="ti ti-scissors" aria-hidden="true"></i> Shorten'; btn.disabled = false; }, 2000);
-  } catch(e) {
-    btn.innerHTML = '<i class="ti ti-alert-triangle" aria-hidden="true"></i> Failed';
-    document.getElementById('shareUrlNote').textContent = e.message || 'Could not shorten the URL. Copy the long URL instead.';
-    setTimeout(() => { btn.innerHTML = '<i class="ti ti-scissors" aria-hidden="true"></i> Shorten'; btn.disabled = false; }, 2500);
-  }
+  await openBitlyWithUrl(longUrl);
+  document.getElementById('shareUrlNote').innerHTML =
+    '<span style="color:var(--green-text)"><i class="ti ti-circle-check" style="vertical-align:-2px"></i> Link copied! Paste it into Bitly (just opened) to get a short link.</span>';
+  btn.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Copied';
+  setTimeout(() => { btn.innerHTML = '<i class="ti ti-scissors" aria-hidden="true"></i> Shorten via Bitly ↗'; }, 2500);
 }
 
 
